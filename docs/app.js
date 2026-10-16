@@ -93,9 +93,22 @@ async function accion(boton, fn, okTexto) {
   finally { boton.disabled = false; boton.textContent = original; }
 }
 
+// ---------- guía para usuarios nuevos ----------
+const esCelular = navigator.userAgentData?.mobile ?? /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+$("guiaCelu").hidden = !esCelular;
+
+function mostrarGuia() {
+  const g = $("guia");
+  g.hidden = false;
+  g.scrollIntoView({ behavior: "smooth", block: "start" });
+  g.classList.add("resaltada");
+  clearTimeout(g._t);
+  g._t = setTimeout(() => g.classList.remove("resaltada"), 4000);
+}
+
 // ---------- billetera ----------
 async function conectar() {
-  if (!F) return aviso("No encontramos Freighter. Instalalo desde freighter.app y elegí la red Testnet.", 7000);
+  if (!F) { mostrarGuia(); return aviso("Primero instalá Freighter: seguí los 3 pasos de arriba.", 7000); }
   let r;
   try { r = await F.requestAccess(); }
   catch (e) { console.error(e); return aviso(`No se pudo conectar con Freighter: ${e?.message || e}`, 7000); }
@@ -103,6 +116,7 @@ async function conectar() {
   const direccion = typeof r === "string" ? r : r?.address;
   if (!direccion) return aviso("Freighter no devolvió ninguna cuenta. Abrí la extensión, desbloqueala y volvé a intentar.", 7000);
   cuenta = direccion;
+  $("guia").hidden = true;
   $("cuenta").textContent = corto(cuenta);
   $("btnConectar").textContent = "Conectado";
   $("btnFondear").hidden = false;
