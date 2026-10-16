@@ -752,3 +752,185 @@ fn producto_con_evidencia_no_depende_de_pagos() {
     e.contrato.revisar(&id);
     assert!(!e.contrato.proyecto(&id).incumplido);
 }
+
+// ---------- I6: mercado de participaciones ----------
+
+/// Proyecto de la demo financiado (Ana 700, Beto 300), sin votos todavía.
+fn financiado(e: &Escenario) -> u32 {
+    let id = crear(e);
+    e.contrato.aportar(&id, &e.ana, &700);
+    e.contrato.aportar(&id, &e.beto, &300);
+    id
+}
+
+/// Una persona nueva con saldo para comprar.
+fn carla(e: &Escenario) -> Address {
+    let c = Address::generate(&e.env);
+    token::StellarAssetClient::new(&e.env, &e.token).mint(&c, &1_000);
+    c
+}
+
+#[test]
+fn la_compra_mueve_participacion_y_plata() {
+    let e = escenario();
+    let id = completado(&e);
+    e.contrato.ofrecer_venta(&id, &e.beto, &300, &250);
+    assert_eq!(e.contrato.proyecto(&id).vendedores, vec![&e.env, e.beto.clone()]);
+    assert_eq!(e.contrato.oferta(&id, &e.beto), Oferta { cantidad: 300, precio: 250 });
+
+    let ana_antes = saldo(&e, &e.ana);
+    let beto_antes = saldo(&e, &e.beto);
+    e.contrato.comprar(&id, &e.ana, &e.beto, &300, &250);
+
+    assert_eq!(e.contrato.participacion(&id, &e.ana), 1_000);
+    assert_eq!(e.contrato.participacion(&id, &e.beto), 0);
+    assert_eq!(saldo(&e, &e.ana), ana_antes - 250);
+    assert_eq!(saldo(&e, &e.beto), beto_antes + 250);
+    assert_eq!(e.contrato.proyecto(&id).vendedores.len(), 0);
+}
+
+#[test]
+fn lo_ganado_antes_de_vender_queda_con_el_vendedor() {
+    let e = escenario();
+    let id = completado(&e);
+    darle_al_dueno(&e, 200);
+    e.contrato.pagar_retorno(&id, &e.dueno, &100); // Beto ganó 30 de esto
+    e.contrato.ofrecer_venta(&id, &e.beto, &300, &250);
+    e.contrato.comprar(&id, &e.ana, &e.beto, &300, &250);
+    e.contrato.pagar_retorno(&id, &e.dueno, &100); // esto ya es todo de Ana
+
+    assert_eq!(e.contrato.cobrar(&id, &e.beto), 30);
+    assert_eq!(e.contrato.cobrar(&id, &e.ana), 70 + 100);
+    assert_eq!(saldo(&e, &e.contrato.address), 0);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #21)")]
+fn quien_voto_la_etapa_en_curso_no_puede_ofrecer() {
+    let e = escenario();
+    let id = financiado(&e);
+    e.contrato.votar(&id, &e.beto, &false);
+    e.contrato.ofrecer_venta(&id, &e.beto, &300, &250);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #21)")]
+fn no_se_compra_a_quien_voto_despues_de_ofrecer() {
+    let e = escenario();
+    let id = financiado(&e);
+    e.contrato.ofrecer_venta(&id, &e.beto, &300, &250);
+    e.contrato.votar(&id, &e.beto, &false); // vota con la oferta abierta
+    e.contrato.comprar(&id, &e.ana, &e.beto, &300, &250);
+}
+
+#[test]
+fn se_puede_vender_cuando_la_etapa_se_resuelve() {
+    let e = escenario();
+    let id = financiado(&e);
+    e.contrato.votar(&id, &e.ana, &true);
+    e.contrato.votar(&id, &e.beto, &true);
+    e.contrato.liberar(&id); // la etapa 1 se resolvió
+    e.contrato.ofrecer_venta(&id, &e.beto, &300, &250);
+    let c = carla(&e);
+    e.contrato.comprar(&id, &c, &e.beto, &300, &250);
+    assert_eq!(e.contrato.participacion(&id, &c), 300);
+}
+
+#[test]
+fn el_comprador_vota_con_lo_que_compro() {
+    let e = escenario();
+    let id = financiado(&e);
+    let c = carla(&e);
+    e.contrato.ofrecer_venta(&id, &e.beto, &300, &250);
+    e.contrato.comprar(&id, &c, &e.beto, &300, &250);
+    e.contrato.votar(&id, &c, &true);
+    assert_eq!(e.contrato.proyecto(&id).hitos.get(0).unwrap().a_favor, 300);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #8)")]
+fn el_vendedor_ya_no_vota_con_lo_que_vendio() {
+    let e = escenario();
+    let id = financiado(&e);
+    let c = carla(&e);
+    e.contrato.ofrecer_venta(&id, &e.beto, &300, &250);
+    e.contrato.comprar(&id, &c, &e.beto, &300, &250);
+    e.contrato.votar(&id, &e.beto, &true);
+}
+
+#[test]
+fn si_el_comprador_ya_voto_lo_comprado_no_suma_a_su_voto() {
+    let e = escenario();
+    let id = financiado(&e);
+    e.contrato.votar(&id, &e.ana, &true); // Ana vota con 700
+    e.contrato.ofrecer_venta(&id, &e.beto, &300, &250); // Beto no votó: puede vender
+    e.contrato.comprar(&id, &e.ana, &e.beto, &300, &250);
+    assert_eq!(e.contrato.proyecto(&id).hitos.get(0).unwrap().a_favor, 700);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #24)")]
+fn protege_al_comprador_si_sube_el_precio() {
+    let e = escenario();
+    let id = completado(&e);
+    e.contrato.ofrecer_venta(&id, &e.beto, &300, &250);
+    e.contrato.ofrecer_venta(&id, &e.beto, &300, &400); // cambia el precio justo antes
+    e.contrato.comprar(&id, &e.ana, &e.beto, &300, &250);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #24)")]
+fn la_cantidad_tiene_que_coincidir() {
+    let e = escenario();
+    let id = completado(&e);
+    e.contrato.ofrecer_venta(&id, &e.beto, &300, &250);
+    e.contrato.comprar(&id, &e.ana, &e.beto, &100, &250);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #8)")]
+fn no_se_ofrece_mas_de_lo_que_se_tiene() {
+    let e = escenario();
+    let id = completado(&e);
+    e.contrato.ofrecer_venta(&id, &e.beto, &301, &250);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #22)")]
+fn cancelar_oferta_la_borra() {
+    let e = escenario();
+    let id = completado(&e);
+    e.contrato.ofrecer_venta(&id, &e.beto, &300, &250);
+    e.contrato.cancelar_oferta(&id, &e.beto);
+    assert_eq!(e.contrato.proyecto(&id).vendedores.len(), 0);
+    e.contrato.comprar(&id, &e.ana, &e.beto, &300, &250);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #23)")]
+fn no_se_compra_a_si_mismo() {
+    let e = escenario();
+    let id = completado(&e);
+    e.contrato.ofrecer_venta(&id, &e.beto, &300, &250);
+    e.contrato.comprar(&id, &e.beto, &e.beto, &300, &250);
+}
+
+#[test]
+fn como_mucho_20_ofertas_abiertas() {
+    let e = escenario();
+    let id = crear(&e);
+    let minteo = token::StellarAssetClient::new(&e.env, &e.token);
+    for _ in 0..20 {
+        let a = Address::generate(&e.env);
+        minteo.mint(&a, &10);
+        e.contrato.aportar(&id, &a, &10);
+        e.contrato.ofrecer_venta(&id, &a, &10, &5);
+    }
+    assert_eq!(e.contrato.proyecto(&id).vendedores.len(), 20);
+    // Reemplazar una oferta existente sí se puede; una nueva no.
+    let primero = e.contrato.proyecto(&id).vendedores.get(0).unwrap();
+    e.contrato.ofrecer_venta(&id, &primero, &10, &6);
+    e.contrato.aportar(&id, &e.ana, &10);
+    let r = e.contrato.try_ofrecer_venta(&id, &e.ana, &10, &5);
+    assert_eq!(r, Err(Ok(soroban_sdk::Error::from_contract_error(Error::OfertasLlenas as u32))));
+}

@@ -18,7 +18,7 @@ Estimación hecha el viernes 16/10 a las 18:20, con corte el sábado a las 6:00 
 | I5 | Historial de pagos e "incumplido" | 1 h | ✅ hecho |
 | T2 | USDC de testnet como moneda | 1 h 15 | sí |
 | T4 | Web: lo de T1 + datos de inversión, pagos y cobro | 2 h 30 | ⚠️ justo (es lo último que entra) |
-| I6 | Mercado de participaciones (ofrecer / comprar) | 2 h | 🌅 después |
+| I6 | Mercado de participaciones (ofrecer / comprar) | 2 h | ✅ hecho (se adelantó) |
 | T3 | Stellar Wallets Kit | 2 h | 🌅 después |
 | T5 | Confianza: números, reglas, FAQ | 1 h 30 | 🌅 después |
 | T6 | (Opcional) Passkeys | 3 h | 🌅 después |
@@ -178,7 +178,7 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 
 ---
 
-## I6. Mercado de participaciones ⬜ 🌅 (2 h)
+## I6. Mercado de participaciones ✅ (2 h)
 
 **Objetivo:** que un aportante pueda vender su participación a otra persona, de forma segura y en una sola operación.
 
@@ -197,6 +197,8 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 **Prueba en testnet**
 - Beto ofrece su participación, Ana la compra, el dueño paga un retorno y Ana cobra la parte que antes era de Beto.
 - Evidencia: hashes de `ofrecer_venta`, `comprar` y `cobrar`.
+
+**Evidencia (16/10/2026)**: 62/62 tests. Contrato [`CBN7TBFL…`](https://stellar.expert/explorer/testnet/contract/CBN7TBFLY7O7HZWQOH2N34IEDRUIRVVGQM5YWY6UOR6N2O5KA4ZVQXZC). Beto ofrece: [`c7b35a24…`](https://stellar.expert/explorer/testnet/tx/c7b35a24a7471e9dfbe63f1245a59603fcddd22615206e1ef95ae35b16a16c8a). Ana compra: [`1a09352a…`](https://stellar.expert/explorer/testnet/tx/1a09352a23c0d0f9d29b43c4dbccf445d03114da9ee14e79b02488622297de9f). Ana cobra 110 XLM: [`f6134028…`](https://stellar.expert/explorer/testnet/tx/f613402821a594bd59d466109b431327efe4423aab1229b8c114b88473528548). Bloqueo por voto probado en vivo (#21). Detalle en `plan/RESUMEN-I6.md`.
 
 ---
 

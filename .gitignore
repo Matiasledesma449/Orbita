@@ -4,3 +4,4 @@ deploy.log
 node_modules/
 demo-vencimiento.log
 demo-incumplido.log
+demo-mercado.log

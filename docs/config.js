@@ -1,6 +1,6 @@
 // Después de correr scripts/deploy.sh, pegá acá el CONTRACT_ID que imprime.
 export const CONFIG = {
-  contractId: "CDXJK2RXXPH7DNYBEOAJQVQB35MQTU4UG5TV3MU6VKGUUKFZ5XUCVPHM",
+  contractId: "CBN7TBFLY7O7HZWQOH2N34IEDRUIRVVGQM5YWY6UOR6N2O5KA4ZVQXZC",
   rpcUrl: "https://soroban-testnet.stellar.org",
   networkPassphrase: "Test SDF Network ; September 2015",
   explorer: "https://stellar.expert/explorer/testnet",

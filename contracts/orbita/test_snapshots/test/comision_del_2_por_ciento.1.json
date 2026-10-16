@@ -816,6 +816,14 @@
                     "val": {
                       "i128": "0"
                     }
+                  },
+                  {
+                    "key": {
+                      "symbol": "vendedores"
+                    },
+                    "val": {
+                      "vec": []
+                    }
                   }
                 ]
               }

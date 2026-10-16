@@ -19,6 +19,8 @@ const ERRORES = {
   17: "Revisá las fechas: tienen que ser posteriores al plazo y crecientes.",
   18: "Venció la fecha para cargar la evidencia de esa etapa.",
   19: "Ese pago no existe en el historial.",
+  20: "Ya hay 20 ofertas de venta abiertas en este proyecto.", 21: "Votaste la etapa en curso: podés vender cuando se resuelva.",
+  22: "Esa oferta de venta ya no existe.", 23: "No podés comprarte a vos mismo.", 24: "La oferta cambió: revisá la cantidad y el precio.",
 };
 
 let cuenta = null;

@@ -28,6 +28,8 @@ const MAX_TITULO: u32 = 80;
 const MAX_DESCRIPCION: u32 = 1_000;
 const MAX_URL: u32 = 300;
 const MAX_HITO: u32 = 120;
+/// Máximo de ofertas de venta abiertas a la vez por proyecto.
+const MAX_OFERTAS: u32 = 20;
 /// Comisión de Órbita sobre cada etapa liberada, en puntos básicos (200 = 2 %).
 pub const COMISION_BPS: i128 = 200;
 /// Escala del reparto acumulado, para no perder decimales al dividir.
@@ -57,6 +59,13 @@ pub enum Error {
     FechasInvalidas = 17,
     EtapaVencida = 18,
     PagoNoExiste = 19,
+    OfertasLlenas = 20,
+    /// Votó la etapa en curso: no puede vender hasta que la etapa se resuelva.
+    VendedorBloqueado = 21,
+    OfertaNoExiste = 22,
+    CompraPropia = 23,
+    /// La oferta cambió (cantidad distinta o precio mayor al máximo del comprador).
+    OfertaCambio = 24,
 }
 
 #[contracttype]
@@ -132,6 +141,16 @@ pub struct Proyecto {
     pub cantidad_pagos: u32,
     /// El dueño no cumplió lo prometido a tiempo. Queda marcado para siempre.
     pub incumplido: bool,
+    /// Quiénes tienen una oferta de venta abierta (máximo `MAX_OFERTAS`).
+    pub vendedores: Vec<Address>,
+}
+
+/// Oferta de venta de participación: se vende entera, por `precio` en el token del proyecto.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Oferta {
+    pub cantidad: i128,
+    pub precio: i128,
 }
 
 /// Un pago del historial público.
@@ -168,6 +187,7 @@ pub enum Clave {
     Posicion(u32, Address),
     Voto(u32, u32, Address),
     Pago(u32, u32),
+    Oferta(u32, Address),
 }
 
 #[contract]
@@ -281,6 +301,7 @@ impl Orbita {
             total_pagado: 0,
             cantidad_pagos: 0,
             incumplido: false,
+            vendedores: Vec::new(&env),
         };
         guardar(&env, id, &proyecto);
         env.storage().instance().set(&Clave::Cantidad, &(id + 1));
@@ -522,6 +543,109 @@ impl Orbita {
         Self::cobrar(env, id, aportante)
     }
 
+    // ---------- Mercado de participaciones ----------
+
+    /// Ofrece vender `cantidad` de participación por `precio`. Reemplaza la oferta anterior.
+    pub fn ofrecer_venta(env: Env, id: u32, vendedor: Address, cantidad: i128, precio: i128) {
+        vendedor.require_auth();
+        let mut p = cargar(&env, id);
+        if aplicar_vencimientos(&env, id, &mut p) {
+            guardar(&env, id, &p);
+        }
+
+        if cantidad <= 0 || precio <= 0 {
+            panic_with_error!(&env, Error::MontoInvalido);
+        }
+        if participacion_de(&env, id, &vendedor) < cantidad {
+            panic_with_error!(&env, Error::SinParticipacion);
+        }
+        if bloqueado_por_voto(&env, id, &p, &vendedor) {
+            panic_with_error!(&env, Error::VendedorBloqueado);
+        }
+        let clave = Clave::Oferta(id, vendedor.clone());
+        if !env.storage().persistent().has(&clave) {
+            if p.vendedores.len() >= MAX_OFERTAS {
+                panic_with_error!(&env, Error::OfertasLlenas);
+            }
+            p.vendedores.push_back(vendedor.clone());
+            guardar(&env, id, &p);
+        }
+        env.storage().persistent().set(&clave, &Oferta { cantidad, precio });
+        env.storage()
+            .persistent()
+            .extend_ttl(&clave, TTL_MINIMO, TTL_MAXIMO);
+
+        env.events()
+            .publish((symbol_short!("oferta"), id), (vendedor, cantidad, precio));
+    }
+
+    /// Retira la oferta de venta del vendedor.
+    pub fn cancelar_oferta(env: Env, id: u32, vendedor: Address) {
+        vendedor.require_auth();
+        let mut p = cargar(&env, id);
+        quitar_oferta(&env, id, &mut p, &vendedor);
+        guardar(&env, id, &p);
+        env.events()
+            .publish((symbol_short!("cancela"), id), vendedor);
+    }
+
+    /// Compra la oferta entera del vendedor, de forma atómica: el comprador paga `precio`
+    /// al vendedor y recibe la participación. `cantidad` y `precio_max` protegen al
+    /// comprador si la oferta cambia justo antes.
+    pub fn comprar(
+        env: Env,
+        id: u32,
+        comprador: Address,
+        vendedor: Address,
+        cantidad: i128,
+        precio_max: i128,
+    ) {
+        comprador.require_auth();
+        if comprador == vendedor {
+            panic_with_error!(&env, Error::CompraPropia);
+        }
+        let mut p = cargar(&env, id);
+        aplicar_vencimientos(&env, id, &mut p);
+
+        let oferta: Oferta = env
+            .storage()
+            .persistent()
+            .get(&Clave::Oferta(id, vendedor.clone()))
+            .unwrap_or_else(|| panic_with_error!(&env, Error::OfertaNoExiste));
+        if oferta.cantidad != cantidad || oferta.precio > precio_max {
+            panic_with_error!(&env, Error::OfertaCambio);
+        }
+        if bloqueado_por_voto(&env, id, &p, &vendedor) {
+            panic_with_error!(&env, Error::VendedorBloqueado);
+        }
+        let mut pos_vendedor = cargar_posicion(&env, id, &vendedor);
+        if pos_vendedor.participacion < cantidad {
+            panic_with_error!(&env, Error::SinParticipacion);
+        }
+
+        // Se asienta a los dos antes de mover la participación: lo ganado hasta ahora
+        // queda con el vendedor y el comprador gana solo desde que compra.
+        let mut pos_comprador = cargar_posicion(&env, id, &comprador);
+        asentar(&p, &mut pos_vendedor);
+        asentar(&p, &mut pos_comprador);
+        pos_vendedor.participacion -= cantidad;
+        pos_comprador.participacion = pos_comprador
+            .participacion
+            .checked_add(cantidad)
+            .expect("overflow");
+        guardar_posicion(&env, id, &vendedor, &pos_vendedor);
+        guardar_posicion(&env, id, &comprador, &pos_comprador);
+        quitar_oferta(&env, id, &mut p, &vendedor);
+        guardar(&env, id, &p);
+
+        cliente_token(&env).transfer(&comprador, &vendedor, &oferta.precio);
+
+        env.events().publish(
+            (symbol_short!("compra"), id),
+            (comprador, vendedor, cantidad, oferta.precio),
+        );
+    }
+
     /// Aplica los cambios que dependen de la fecha y los guarda. Cualquiera la puede
     /// llamar. Devuelve el estado del proyecto.
     pub fn revisar(env: Env, id: u32) -> Estado {
@@ -544,6 +668,14 @@ impl Orbita {
 
     pub fn participacion(env: Env, id: u32, aportante: Address) -> i128 {
         participacion_de(&env, id, &aportante)
+    }
+
+    /// La oferta de venta abierta de un vendedor. La lista está en `proyecto(id).vendedores`.
+    pub fn oferta(env: Env, id: u32, vendedor: Address) -> Oferta {
+        env.storage()
+            .persistent()
+            .get(&Clave::Oferta(id, vendedor))
+            .unwrap_or_else(|| panic_with_error!(&env, Error::OfertaNoExiste))
     }
 
     /// Un pago del historial (n empieza en 0).
@@ -638,6 +770,27 @@ fn aplicar_vencimientos(env: &Env, id: u32, p: &mut Proyecto) -> bool {
         }
     }
     cambio
+}
+
+/// Regla 5 (ADR-001): quien votó la etapa en curso no puede vender hasta que se resuelva.
+/// Al liberarse la etapa, `hito_actual` avanza y el voto viejo deja de bloquear.
+fn bloqueado_por_voto(env: &Env, id: u32, p: &Proyecto, quien: &Address) -> bool {
+    p.estado == Estado::Financiado
+        && env
+            .storage()
+            .persistent()
+            .has(&Clave::Voto(id, p.hito_actual, quien.clone()))
+}
+
+fn quitar_oferta(env: &Env, id: u32, p: &mut Proyecto, vendedor: &Address) {
+    let clave = Clave::Oferta(id, vendedor.clone());
+    if !env.storage().persistent().has(&clave) {
+        panic_with_error!(env, Error::OfertaNoExiste);
+    }
+    env.storage().persistent().remove(&clave);
+    if let Some(i) = p.vendedores.first_index_of(vendedor) {
+        p.vendedores.remove(i);
+    }
 }
 
 /// Suma de los mínimos comprometidos de las etapas ya liberadas.
