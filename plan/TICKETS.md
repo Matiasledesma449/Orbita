@@ -12,7 +12,7 @@ Estimación hecha el viernes 16/10 a las 18:20, con corte el sábado a las 6:00 
 |---|---|---|---|
 | T1 | Contrato v2: descripción, imagen y evidencia | — | ✅ hecho |
 | I1 | Comisión de Órbita (2 %) | 40 min | ✅ hecho |
-| I2 | Datos de inversión al publicar | 1 h | sí |
+| I2 | Datos de inversión al publicar | 1 h | ✅ hecho |
 | I3 | Etapa vencida sin evidencia → retiro sin votar | 1 h | sí |
 | I4 | Pagos del dueño y reparto acumulado (`pagar_retorno` / `cobrar`) | 2 h | sí |
 | I5 | Historial de pagos e "incumplido" | 1 h | sí |
@@ -87,7 +87,7 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 
 ---
 
-## I2. Datos de inversión al publicar ⬜ (1 h)
+## I2. Datos de inversión al publicar ✅ (1 h)
 
 **Objetivo:** que el dueño declare qué devuelve, en qué condiciones, cuánto mínimo por etapa y para cuándo.
 
@@ -105,6 +105,8 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 **Prueba en testnet**
 - `crear_proyecto` con tipo "Préstamo", condiciones y mínimos y fechas por etapa. Leer `proyecto` y mostrar los datos.
 - Evidencia: hash de `crear_proyecto`.
+
+**Evidencia (16/10/2026)**: 19/19 tests. Contrato [`CD5GH4WG…`](https://stellar.expert/explorer/testnet/contract/CD5GH4WGER5GBXZS4OIBP3DGEHH5J667G54AWFIR4352SWYRMQMSR6FS). `crear_proyecto` con préstamo al 10 %: [`ccb35b73…`](https://stellar.expert/explorer/testnet/tx/ccb35b73adea7ae88ef8aaf51bcc1c0ffdf61ecb31f3a6615d1e3622d8291abf). Detalle en `plan/RESUMEN-I2.md`.
 
 ---
 

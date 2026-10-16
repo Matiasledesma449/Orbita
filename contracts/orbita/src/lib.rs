@@ -48,6 +48,7 @@ pub enum Error {
     HitoInvalido = 14,
     SinEvidencia = 15,
     EvidenciaYaCargada = 16,
+    FechasInvalidas = 17,
 }
 
 #[contracttype]
@@ -64,11 +65,30 @@ pub enum Estado {
     Fallido = 3,
 }
 
+/// Qué recibe a cambio quien aporta.
+#[contracttype]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum TipoRetorno {
+    /// Préstamo con interés.
+    Prestamo = 0,
+    /// Un porcentaje de las ventas.
+    Ventas = 1,
+    /// Una parte de las ganancias.
+    Ganancias = 2,
+    /// Producto (unidades).
+    Producto = 3,
+}
+
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Hito {
     pub descripcion: String,
     pub monto: i128,
+    /// Lo que el dueño se compromete a devolver o producir por esta etapa.
+    pub minimo_retorno: i128,
+    /// Fecha (timestamp) para cargar la evidencia y pagar el mínimo de esta etapa.
+    pub fecha_limite: u64,
     pub evidencia: String,
     pub a_favor: i128,
     pub en_contra: i128,
@@ -82,6 +102,8 @@ pub struct Proyecto {
     pub titulo: String,
     pub descripcion: String,
     pub imagen: String,
+    pub tipo_retorno: TipoRetorno,
+    pub condiciones: String,
     pub meta: i128,
     pub recaudado: i128,
     pub liberado: i128,
@@ -117,20 +139,31 @@ impl Orbita {
     }
 
     /// Publica un proyecto. La meta es la suma de los montos de los hitos.
-    /// `imagen` es una URL (puede ir vacía).
+    /// `imagen` es una URL (puede ir vacía). Por cada hito, `minimos` es lo que el dueño
+    /// se compromete a devolver o producir y `fechas` la fecha límite (crecientes y
+    /// posteriores a `plazo`).
     pub fn crear_proyecto(
         env: Env,
         dueno: Address,
         titulo: String,
         descripcion: String,
         imagen: String,
+        tipo_retorno: TipoRetorno,
+        condiciones: String,
         plazo: u64,
         hitos: Vec<String>,
         montos: Vec<i128>,
+        minimos: Vec<i128>,
+        fechas: Vec<u64>,
     ) -> u32 {
         dueno.require_auth();
 
-        if hitos.len() == 0 || hitos.len() != montos.len() || hitos.len() > MAX_HITOS {
+        if hitos.len() == 0
+            || hitos.len() > MAX_HITOS
+            || hitos.len() != montos.len()
+            || hitos.len() != minimos.len()
+            || hitos.len() != fechas.len()
+        {
             panic_with_error!(&env, Error::HitosInvalidos);
         }
         if plazo <= env.ledger().timestamp() {
@@ -140,17 +173,26 @@ impl Orbita {
             || titulo.len() > MAX_TITULO
             || descripcion.len() > MAX_DESCRIPCION
             || imagen.len() > MAX_URL
+            || condiciones.len() == 0
+            || condiciones.len() > MAX_DESCRIPCION
         {
             panic_with_error!(&env, Error::TextoInvalido);
         }
 
         let mut lista: Vec<Hito> = Vec::new(&env);
         let mut meta: i128 = 0;
+        let mut fecha_anterior = plazo;
         for i in 0..hitos.len() {
             let monto = montos.get(i).unwrap();
-            if monto <= 0 {
+            let minimo_retorno = minimos.get(i).unwrap();
+            if monto <= 0 || minimo_retorno < 0 {
                 panic_with_error!(&env, Error::MontoInvalido);
             }
+            let fecha_limite = fechas.get(i).unwrap();
+            if fecha_limite <= fecha_anterior {
+                panic_with_error!(&env, Error::FechasInvalidas);
+            }
+            fecha_anterior = fecha_limite;
             meta += monto;
             let descripcion_hito = hitos.get(i).unwrap();
             if descripcion_hito.len() == 0 || descripcion_hito.len() > MAX_HITO {
@@ -159,6 +201,8 @@ impl Orbita {
             lista.push_back(Hito {
                 descripcion: descripcion_hito,
                 monto,
+                minimo_retorno,
+                fecha_limite,
                 evidencia: String::from_str(&env, ""),
                 a_favor: 0,
                 en_contra: 0,
@@ -172,6 +216,8 @@ impl Orbita {
             titulo,
             descripcion,
             imagen,
+            tipo_retorno,
+            condiciones,
             meta,
             recaudado: 0,
             liberado: 0,

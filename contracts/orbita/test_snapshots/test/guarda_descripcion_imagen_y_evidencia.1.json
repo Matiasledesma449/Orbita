@@ -92,6 +92,12 @@
                   "string": "https://ejemplo.org/huerta.jpg"
                 },
                 {
+                  "u32": 0
+                },
+                {
+                  "string": "Devolvemos lo aportado m\\xc3\\xa1s 10 % en dos cuotas."
+                },
+                {
                   "u64": "1000"
                 },
                 {
@@ -111,6 +117,26 @@
                     },
                     {
                       "i128": "400"
+                    }
+                  ]
+                },
+                {
+                  "vec": [
+                    {
+                      "i128": "660"
+                    },
+                    {
+                      "i128": "440"
+                    }
+                  ]
+                },
+                {
+                  "vec": [
+                    {
+                      "u64": "5000"
+                    },
+                    {
+                      "u64": "9000"
                     }
                   ]
                 }
@@ -458,6 +484,14 @@
                 "map": [
                   {
                     "key": {
+                      "symbol": "condiciones"
+                    },
+                    "val": {
+                      "string": "Devolvemos lo aportado m\\xc3\\xa1s 10 % en dos cuotas."
+                    }
+                  },
+                  {
+                    "key": {
                       "symbol": "descripcion"
                     },
                     "val": {
@@ -538,10 +572,26 @@
                             },
                             {
                               "key": {
+                                "symbol": "fecha_limite"
+                              },
+                              "val": {
+                                "u64": "5000"
+                              }
+                            },
+                            {
+                              "key": {
                                 "symbol": "liberado"
                               },
                               "val": {
                                 "bool": true
+                              }
+                            },
+                            {
+                              "key": {
+                                "symbol": "minimo_retorno"
+                              },
+                              "val": {
+                                "i128": "660"
                               }
                             },
                             {
@@ -590,10 +640,26 @@
                             },
                             {
                               "key": {
+                                "symbol": "fecha_limite"
+                              },
+                              "val": {
+                                "u64": "9000"
+                              }
+                            },
+                            {
+                              "key": {
                                 "symbol": "liberado"
                               },
                               "val": {
                                 "bool": false
+                              }
+                            },
+                            {
+                              "key": {
+                                "symbol": "minimo_retorno"
+                              },
+                              "val": {
+                                "i128": "440"
                               }
                             },
                             {
@@ -647,6 +713,14 @@
                     },
                     "val": {
                       "i128": "1000"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "tipo_retorno"
+                    },
+                    "val": {
+                      "u32": 0
                     }
                   },
                   {

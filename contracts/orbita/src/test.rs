@@ -44,6 +44,8 @@ fn crear(e: &Escenario) -> u32 {
         &String::from_str(&e.env, "Huerta comunitaria"),
         &String::from_str(&e.env, "Una huerta para el barrio"),
         &String::from_str(&e.env, "https://ejemplo.org/huerta.jpg"),
+        &TipoRetorno::Prestamo,
+        &String::from_str(&e.env, "Devolvemos lo aportado más 10 % en dos cuotas."),
         &1_000u64,
         &vec![
             &e.env,
@@ -51,6 +53,8 @@ fn crear(e: &Escenario) -> u32 {
             String::from_str(&e.env, "Riego por goteo"),
         ],
         &vec![&e.env, 600i128, 400i128],
+        &vec![&e.env, 660i128, 440i128],
+        &vec![&e.env, 5_000u64, 9_000u64],
     )
 }
 
@@ -242,9 +246,13 @@ fn no_crea_proyecto_sin_titulo() {
         &String::from_str(&e.env, ""),
         &String::from_str(&e.env, ""),
         &String::from_str(&e.env, ""),
+        &TipoRetorno::Producto,
+        &String::from_str(&e.env, "Una caja por aporte"),
         &1_000u64,
         &vec![&e.env, String::from_str(&e.env, "Etapa")],
         &vec![&e.env, 100i128],
+        &vec![&e.env, 0i128],
+        &vec![&e.env, 2_000u64],
     );
 }
 
@@ -261,4 +269,82 @@ fn comision_del_2_por_ciento() {
     assert_eq!(saldo(&e, &e.contrato.address), 400);
     // La etapa liberada cuenta completa: el retorno comprometido se calcula sobre 600.
     assert_eq!(e.contrato.proyecto(&id).liberado, 600);
+}
+
+/// Crea un proyecto de una o dos etapas con los datos de inversión indicados.
+fn crear_con(
+    e: &Escenario,
+    condiciones: &str,
+    montos: soroban_sdk::Vec<i128>,
+    minimos: soroban_sdk::Vec<i128>,
+    fechas: soroban_sdk::Vec<u64>,
+) -> u32 {
+    let mut hitos = soroban_sdk::Vec::new(&e.env);
+    for _ in 0..montos.len() {
+        hitos.push_back(String::from_str(&e.env, "Etapa"));
+    }
+    e.contrato.crear_proyecto(
+        &e.dueno,
+        &String::from_str(&e.env, "Proyecto"),
+        &String::from_str(&e.env, ""),
+        &String::from_str(&e.env, ""),
+        &TipoRetorno::Ventas,
+        &String::from_str(&e.env, condiciones),
+        &1_000u64,
+        &hitos,
+        &montos,
+        &minimos,
+        &fechas,
+    )
+}
+
+#[test]
+fn guarda_datos_de_inversion() {
+    let e = escenario();
+    let id = crear(&e);
+    let p = e.contrato.proyecto(&id);
+    assert_eq!(p.tipo_retorno, TipoRetorno::Prestamo);
+    assert_eq!(
+        p.condiciones,
+        String::from_str(&e.env, "Devolvemos lo aportado más 10 % en dos cuotas.")
+    );
+    let h0 = p.hitos.get(0).unwrap();
+    let h1 = p.hitos.get(1).unwrap();
+    assert_eq!((h0.minimo_retorno, h0.fecha_limite), (660, 5_000));
+    assert_eq!((h1.minimo_retorno, h1.fecha_limite), (440, 9_000));
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #17)")]
+fn fechas_tienen_que_ser_crecientes() {
+    let e = escenario();
+    crear_con(&e, "10 % de ventas", vec![&e.env, 600, 400], vec![&e.env, 0, 0], vec![&e.env, 5_000, 5_000]);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #17)")]
+fn fecha_de_etapa_posterior_al_plazo() {
+    let e = escenario();
+    crear_con(&e, "10 % de ventas", vec![&e.env, 600], vec![&e.env, 0], vec![&e.env, 1_000]);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #2)")]
+fn listas_del_mismo_largo() {
+    let e = escenario();
+    crear_con(&e, "10 % de ventas", vec![&e.env, 600, 400], vec![&e.env, 0], vec![&e.env, 5_000, 9_000]);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #3)")]
+fn minimo_no_negativo() {
+    let e = escenario();
+    crear_con(&e, "10 % de ventas", vec![&e.env, 600], vec![&e.env, -1], vec![&e.env, 5_000]);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #13)")]
+fn condiciones_obligatorias() {
+    let e = escenario();
+    crear_con(&e, "", vec![&e.env, 600], vec![&e.env, 0], vec![&e.env, 5_000]);
 }

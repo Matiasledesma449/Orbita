@@ -37,15 +37,22 @@ invocar() { # $1 = cuenta firmante, resto = funcion y argumentos
   stellar contract invoke --id "$CONTRATO" --source "$firmante" --network "$RED" -- "$@" 2>&1 | tee -a "$LOG"
 }
 
-log "== 4. Demo: proyecto con 2 etapas (60 + 40 XLM) =="
-PLAZO=$(( $(date +%s) + 30 * 24 * 3600 ))
+log "== 4. Demo: préstamo al 10 % en 2 etapas (60 + 40 XLM) =="
+DIA=$(( 24 * 3600 ))
+PLAZO=$(( $(date +%s) + 30 * DIA ))        # para juntar la plata
+FECHA1=$(( PLAZO + 30 * DIA ))             # etapa 1: evidencia y pago del mínimo
+FECHA2=$(( PLAZO + 60 * DIA ))             # etapa 2
 invocar dueno crear_proyecto --dueno "$DUENO" \
   --titulo "Huerta comunitaria Barrio Esperanza" \
   --descripcion "Huerta para 40 familias del barrio: semillas, herramientas y riego por goteo." \
   --imagen "https://raw.githubusercontent.com/Matiasledesma449/Orbita/v2/docs/img/huerta.svg" \
+  --tipo_retorno 0 \
+  --condiciones "Préstamo al 10 %: devolvemos 66 XLM al terminar la etapa 1 y 44 XLM al terminar la etapa 2." \
   --plazo "$PLAZO" \
   --hitos '["Compra de semillas y herramientas","Sistema de riego por goteo"]' \
-  --montos '["600000000","400000000"]'
+  --montos '["600000000","400000000"]' \
+  --minimos '["660000000","440000000"]' \
+  --fechas "[$FECHA1,$FECHA2]"
 
 log "== 5. Aportes (Ana 70 XLM, Beto 30 XLM) =="
 invocar ana aportar --id 0 --aportante "$ANA" --monto 700000000

@@ -16,6 +16,7 @@ const ERRORES = {
   11: "Este proyecto no está en reembolso.", 12: "El plazo tiene que ser futuro.",
   13: "Revisá los textos: falta el título o alguno es demasiado largo.", 14: "Esa etapa todavía no se liberó.",
   15: "El dueño todavía no cargó la evidencia de la etapa anterior.", 16: "La evidencia de esa etapa ya estaba cargada.",
+  17: "Revisá las fechas: tienen que ser posteriores al plazo y crecientes.",
 };
 
 let cuenta = null;
@@ -236,9 +237,13 @@ $("formCrear").onsubmit = (ev) => {
     sv.str(f.titulo.value.trim()),
     sv.str(""), // descripción: el formulario la suma en T4
     sv.str(""), // imagen: el formulario la suma en T4
+    sv.u32(3), // tipo de retorno: Producto, hasta que el formulario lo pida en T4
+    sv.str("Condiciones a definir por el dueño (el formulario las pide desde T4)."),
     sv.u64(plazo),
     sv.vec(filas.map((r) => sv.str(r.querySelector(".desc").value.trim()))),
     sv.vec(filas.map((r) => sv.i128(aUnidades(r.querySelector(".monto").value)))),
+    sv.vec(filas.map(() => sv.i128(0))), // mínimo comprometido: se pide en T4
+    sv.vec(filas.map((_, i) => sv.u64(plazo + (i + 1) * 30 * 86400))), // una fecha cada 30 días
   ), "¡Proyecto publicado en Stellar!").then(() => f.reset());
 };
 
