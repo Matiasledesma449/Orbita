@@ -14,6 +14,8 @@ const ERRORES = {
   7: "El proyecto todavía no está financiado.", 8: "No tenés participación en este proyecto.",
   9: "Ya votaste esta etapa.", 10: "La etapa todavía no tiene mayoría a favor.",
   11: "Este proyecto no está en reembolso.", 12: "El plazo tiene que ser futuro.",
+  13: "Revisá los textos: falta el título o alguno es demasiado largo.", 14: "Esa etapa todavía no se liberó.",
+  15: "El dueño todavía no cargó la evidencia de la etapa anterior.", 16: "La evidencia de esa etapa ya estaba cargada.",
 };
 
 let cuenta = null;
@@ -232,6 +234,8 @@ $("formCrear").onsubmit = (ev) => {
   accion(boton, () => escribir("crear_proyecto",
     sv.address(cuenta),
     sv.str(f.titulo.value.trim()),
+    sv.str(""), // descripción: el formulario la suma en T4
+    sv.str(""), // imagen: el formulario la suma en T4
     sv.u64(plazo),
     sv.vec(filas.map((r) => sv.str(r.querySelector(".desc").value.trim()))),
     sv.vec(filas.map((r) => sv.i128(aUnidades(r.querySelector(".monto").value)))),

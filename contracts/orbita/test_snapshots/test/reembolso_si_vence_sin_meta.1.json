@@ -86,6 +86,12 @@
                   "string": "Huerta comunitaria"
                 },
                 {
+                  "string": "Una huerta para el barrio"
+                },
+                {
+                  "string": "https://ejemplo.org/huerta.jpg"
+                },
+                {
                   "u64": "1000"
                 },
                 {
@@ -328,6 +334,14 @@
                 "map": [
                   {
                     "key": {
+                      "symbol": "descripcion"
+                    },
+                    "val": {
+                      "string": "Una huerta para el barrio"
+                    }
+                  },
+                  {
+                    "key": {
                       "symbol": "dueno"
                     },
                     "val": {
@@ -392,6 +406,14 @@
                             },
                             {
                               "key": {
+                                "symbol": "evidencia"
+                              },
+                              "val": {
+                                "string": ""
+                              }
+                            },
+                            {
+                              "key": {
                                 "symbol": "liberado"
                               },
                               "val": {
@@ -436,6 +458,14 @@
                             },
                             {
                               "key": {
+                                "symbol": "evidencia"
+                              },
+                              "val": {
+                                "string": ""
+                              }
+                            },
+                            {
+                              "key": {
                                 "symbol": "liberado"
                               },
                               "val": {
@@ -453,6 +483,14 @@
                           ]
                         }
                       ]
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "imagen"
+                    },
+                    "val": {
+                      "string": "https://ejemplo.org/huerta.jpg"
                     }
                   },
                   {

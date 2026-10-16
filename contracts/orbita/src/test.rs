@@ -2,7 +2,7 @@
 
 use super::*;
 use soroban_sdk::{
-    testutils::{Address as _, Ledger},
+    testutils::{Address as _, AuthorizedFunction, Ledger},
     token, vec, Address, Env, String,
 };
 
@@ -40,6 +40,8 @@ fn crear(e: &Escenario) -> u32 {
     e.contrato.crear_proyecto(
         &e.dueno,
         &String::from_str(&e.env, "Huerta comunitaria"),
+        &String::from_str(&e.env, "Una huerta para el barrio"),
+        &String::from_str(&e.env, "https://ejemplo.org/huerta.jpg"),
         &1_000u64,
         &vec![
             &e.env,
@@ -48,6 +50,10 @@ fn crear(e: &Escenario) -> u32 {
         ],
         &vec![&e.env, 600i128, 400i128],
     )
+}
+
+fn evidencia(e: &Escenario, id: u32, hito: u32) {
+    e.contrato.cargar_evidencia(&id, &hito, &String::from_str(&e.env, "https://ejemplo.org/fotos"));
 }
 
 fn saldo(e: &Escenario, quien: &Address) -> i128 {
@@ -71,6 +77,7 @@ fn flujo_completo_con_hito_rechazado() {
     assert_eq!(e.contrato.liberar(&id), 600);
     assert_eq!(saldo(&e, &e.dueno), 600);
     assert_eq!(e.contrato.proyecto(&id).hito_actual, 1);
+    evidencia(&e, id, 0);
 
     // Hito 2: los dos rechazan, el proyecto falla y se reembolsan los 400 restantes.
     e.contrato.votar(&id, &e.beto, &false);
@@ -92,9 +99,11 @@ fn flujo_completo_exitoso() {
     e.contrato.votar(&id, &e.ana, &true);
     e.contrato.votar(&id, &e.beto, &true);
     e.contrato.liberar(&id);
+    evidencia(&e, id, 0);
     e.contrato.votar(&id, &e.ana, &true);
     e.contrato.votar(&id, &e.beto, &true);
     e.contrato.liberar(&id);
+    evidencia(&e, id, 1);
 
     assert_eq!(e.contrato.proyecto(&id).estado, Estado::Completado);
     assert_eq!(saldo(&e, &e.dueno), 1_000);
@@ -139,4 +148,96 @@ fn no_supera_la_meta() {
     let id = crear(&e);
     e.contrato.aportar(&id, &e.ana, &900);
     e.contrato.aportar(&id, &e.beto, &200); // 900 + 200 > 1.000
+}
+
+#[test]
+fn guarda_descripcion_imagen_y_evidencia() {
+    let e = escenario();
+    let id = crear(&e);
+    let p = e.contrato.proyecto(&id);
+    assert_eq!(p.descripcion, String::from_str(&e.env, "Una huerta para el barrio"));
+    assert_eq!(p.imagen, String::from_str(&e.env, "https://ejemplo.org/huerta.jpg"));
+    assert_eq!(p.hitos.get(0).unwrap().evidencia.len(), 0);
+
+    e.contrato.aportar(&id, &e.ana, &700);
+    e.contrato.aportar(&id, &e.beto, &300);
+    e.contrato.votar(&id, &e.ana, &true); // la etapa 1 se vota sin evidencia
+    e.contrato.liberar(&id);
+    evidencia(&e, id, 0);
+    assert_eq!(
+        e.contrato.proyecto(&id).hitos.get(0).unwrap().evidencia,
+        String::from_str(&e.env, "https://ejemplo.org/fotos")
+    );
+}
+
+#[test]
+fn solo_el_dueno_carga_evidencia() {
+    let e = escenario();
+    let id = crear(&e);
+    e.contrato.aportar(&id, &e.ana, &700);
+    e.contrato.aportar(&id, &e.beto, &300);
+    e.contrato.votar(&id, &e.ana, &true);
+    e.contrato.liberar(&id);
+    evidencia(&e, id, 0);
+
+    let auths = e.env.auths();
+    assert_eq!(auths.len(), 1);
+    let (quien, invocacion) = &auths[0];
+    assert_eq!(quien, &e.dueno);
+    match &invocacion.function {
+        AuthorizedFunction::Contract((_, funcion, _)) => {
+            assert_eq!(funcion, &soroban_sdk::Symbol::new(&e.env, "cargar_evidencia"))
+        }
+        _ => panic!("autorización inesperada"),
+    }
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #15)")]
+fn no_vota_etapa_2_sin_evidencia() {
+    let e = escenario();
+    let id = crear(&e);
+    e.contrato.aportar(&id, &e.ana, &700);
+    e.contrato.aportar(&id, &e.beto, &300);
+    e.contrato.votar(&id, &e.ana, &true);
+    e.contrato.liberar(&id);
+    e.contrato.votar(&id, &e.ana, &true); // falta la evidencia de la etapa 1
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #14)")]
+fn no_carga_evidencia_de_etapa_no_liberada() {
+    let e = escenario();
+    let id = crear(&e);
+    e.contrato.aportar(&id, &e.ana, &700);
+    e.contrato.aportar(&id, &e.beto, &300);
+    evidencia(&e, id, 0);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #16)")]
+fn no_carga_evidencia_dos_veces() {
+    let e = escenario();
+    let id = crear(&e);
+    e.contrato.aportar(&id, &e.ana, &700);
+    e.contrato.aportar(&id, &e.beto, &300);
+    e.contrato.votar(&id, &e.ana, &true);
+    e.contrato.liberar(&id);
+    evidencia(&e, id, 0);
+    evidencia(&e, id, 0);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #13)")]
+fn no_crea_proyecto_sin_titulo() {
+    let e = escenario();
+    e.contrato.crear_proyecto(
+        &e.dueno,
+        &String::from_str(&e.env, ""),
+        &String::from_str(&e.env, ""),
+        &String::from_str(&e.env, ""),
+        &1_000u64,
+        &vec![&e.env, String::from_str(&e.env, "Etapa")],
+        &vec![&e.env, 100i128],
+    );
 }

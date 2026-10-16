@@ -6,7 +6,7 @@ Estado: ⬜ pendiente · 🔄 en curso · ✅ terminado
 
 ---
 
-## T1. Contrato v2: descripción, imagen y evidencia por etapa ⬜
+## T1. Contrato v2: descripción, imagen y evidencia por etapa ✅
 
 **Objetivo:** que cada proyecto cuente qué es y muestre una imagen, y que el dueño suba una prueba de lo que hizo antes de pedir plata. El voto pasa a significar "liberar la plata de la próxima etapa".
 
@@ -14,7 +14,7 @@ Estado: ⬜ pendiente · 🔄 en curso · ✅ terminado
 - `Proyecto` suma `descripcion: String` e `imagen: String` (URL).
 - `Hito` suma `evidencia: String` (URL, vacía al principio).
 - Nueva función `cargar_evidencia(id, n_hito, url)`, que solo puede llamar el dueño.
-- Votar significa "liberar la plata de la próxima etapa". Propuesta, a confirmar al empezar el ticket: solo se puede votar la etapa actual después de que el dueño cargó su evidencia. El resto de la lógica (mayoría >50 %, rechazo → reembolso proporcional) queda igual.
+- Votar significa "liberar la plata de la próxima etapa". Regla acordada: la etapa 1 se vota apenas el proyecto se financia; desde la etapa 2, el dueño tiene que haber cargado antes la evidencia de la etapa anterior. El resto de la lógica (mayoría >50 %, rechazo → reembolso proporcional) queda igual.
 - Límites de largo en los textos, para no gastar de más en almacenamiento.
 - Tests nuevos: cargar evidencia, que nadie más que el dueño pueda hacerlo, y no votar sin evidencia.
 - Actualizar `scripts/deploy.sh` (nuevos argumentos) y lo mínimo de `docs/app.js` para que no se rompa.
@@ -24,6 +24,20 @@ Estado: ⬜ pendiente · 🔄 en curso · ✅ terminado
 - Desplegar el contrato v2 en testnet (contrato nuevo; el v1 de `main` no se toca).
 - Demo con el CLI: crear proyecto con descripción e imagen → aportes → el dueño carga evidencia → voto → liberar.
 - Evidencia: CONTRACT_ID v2 y los hashes de `cargar_evidencia` y `liberar`.
+
+**Evidencia (16/10/2026)**
+- `cargo test`: 12 de 12 en verde (6 anteriores + 6 nuevos).
+- Contrato v2 en testnet: [`CB343VI2B4A2KRPKPT6TI3DXSIOH443DDZLFMNEPTDDOU7GPS7UV2U7P`](https://stellar.expert/explorer/testnet/contract/CB343VI2B4A2KRPKPT6TI3DXSIOH443DDZLFMNEPTDDOU7GPS7UV2U7P)
+- Transacciones:
+  - crear_proyecto (con descripción e imagen): [`47434d48900c…`](https://stellar.expert/explorer/testnet/tx/47434d48900c567d1f1fa152d1d531603c52f585497e247a40299924e961a6ef)
+  - aportar (Ana, 70 XLM): [`5ba06b8e7593…`](https://stellar.expert/explorer/testnet/tx/5ba06b8e75932a4edbd90804a8a60d900e1c6e8fb8bafaa2c53305a2eec01d0b)
+  - aportar (Beto, 30 XLM): [`ec48eae93949…`](https://stellar.expert/explorer/testnet/tx/ec48eae93949527ad7f2035d82874c89e811229b0a440c4d801da0bf2b8ff05b)
+  - votar etapa 1 (Ana): [`f9c80e5c5e11…`](https://stellar.expert/explorer/testnet/tx/f9c80e5c5e111a7cf48fca90b856b5ba676a2b78eb6e16d4da49c264a49dbdbb)
+  - liberar etapa 1 (60 XLM): [`089d3961d34b…`](https://stellar.expert/explorer/testnet/tx/089d3961d34b13e3bfe9313280659f672a1c2244f73309491417f5f74e734118)
+  - cargar_evidencia etapa 1: [`7eefed9db123…`](https://stellar.expert/explorer/testnet/tx/7eefed9db1238a8e98200f933a6e16935b80f52e9a526ab0b112c584d334806c)
+  - votar etapa 2 (Ana): [`355e20fd16d7…`](https://stellar.expert/explorer/testnet/tx/355e20fd16d74a58d8c8eb255680ab3accb768e74e259f2ae5c8faf6a20e2dd2)
+  - liberar etapa 2 (40 XLM): [`6a29708bca6d…`](https://stellar.expert/explorer/testnet/tx/6a29708bca6dbde80f6fd24d0dc7c5e732bdd546ec7950ae585378d51ecfe9a1)
+- Estado final: proyecto Completado, 100 XLM liberados, evidencia de la etapa 1 guardada.
 
 ---
 

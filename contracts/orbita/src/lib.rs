@@ -4,8 +4,11 @@
 //! - Un dueño (persona humana o jurídica) publica un proyecto dividido en hitos.
 //! - Los aportantes envían fondos (XLM en testnet, USDC en producción) y reciben
 //!   participaciones 1:1: son el "token" del proyecto y su peso de voto.
-//! - Los fondos quedan en el contrato. El dueño solo cobra un hito cuando
-//!   más de la mitad de las participaciones vota a favor.
+//! - Los fondos quedan en el contrato. La plata se libera ANTES de cada etapa:
+//!   el voto significa "liberar la plata de la próxima etapa", y el dueño solo
+//!   cobra cuando más de la mitad de las participaciones vota a favor.
+//! - La etapa 1 se vota apenas el proyecto se financia. Para votar la etapa 2 en
+//!   adelante, el dueño tiene que haber cargado la evidencia (URL) de la anterior.
 //! - Si más de la mitad vota en contra, o el plazo vence sin llegar a la meta,
 //!   cada aportante recupera su parte proporcional de lo que no se liberó.
 
@@ -18,6 +21,10 @@ const DIA_EN_LEDGERS: u32 = 17_280; // ~5 segundos por ledger
 const TTL_MINIMO: u32 = 30 * DIA_EN_LEDGERS;
 const TTL_MAXIMO: u32 = 120 * DIA_EN_LEDGERS;
 const MAX_HITOS: u32 = 10;
+const MAX_TITULO: u32 = 80;
+const MAX_DESCRIPCION: u32 = 1_000;
+const MAX_URL: u32 = 300;
+const MAX_HITO: u32 = 120;
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -35,6 +42,10 @@ pub enum Error {
     SinMayoria = 10,
     NoReembolsable = 11,
     PlazoInvalido = 12,
+    TextoInvalido = 13,
+    HitoInvalido = 14,
+    SinEvidencia = 15,
+    EvidenciaYaCargada = 16,
 }
 
 #[contracttype]
@@ -56,6 +67,7 @@ pub enum Estado {
 pub struct Hito {
     pub descripcion: String,
     pub monto: i128,
+    pub evidencia: String,
     pub a_favor: i128,
     pub en_contra: i128,
     pub liberado: bool,
@@ -66,6 +78,8 @@ pub struct Hito {
 pub struct Proyecto {
     pub dueno: Address,
     pub titulo: String,
+    pub descripcion: String,
+    pub imagen: String,
     pub meta: i128,
     pub recaudado: i128,
     pub liberado: i128,
@@ -98,10 +112,13 @@ impl Orbita {
     }
 
     /// Publica un proyecto. La meta es la suma de los montos de los hitos.
+    /// `imagen` es una URL (puede ir vacía).
     pub fn crear_proyecto(
         env: Env,
         dueno: Address,
         titulo: String,
+        descripcion: String,
+        imagen: String,
         plazo: u64,
         hitos: Vec<String>,
         montos: Vec<i128>,
@@ -114,6 +131,13 @@ impl Orbita {
         if plazo <= env.ledger().timestamp() {
             panic_with_error!(&env, Error::PlazoInvalido);
         }
+        if titulo.len() == 0
+            || titulo.len() > MAX_TITULO
+            || descripcion.len() > MAX_DESCRIPCION
+            || imagen.len() > MAX_URL
+        {
+            panic_with_error!(&env, Error::TextoInvalido);
+        }
 
         let mut lista: Vec<Hito> = Vec::new(&env);
         let mut meta: i128 = 0;
@@ -123,9 +147,14 @@ impl Orbita {
                 panic_with_error!(&env, Error::MontoInvalido);
             }
             meta += monto;
+            let descripcion_hito = hitos.get(i).unwrap();
+            if descripcion_hito.len() == 0 || descripcion_hito.len() > MAX_HITO {
+                panic_with_error!(&env, Error::TextoInvalido);
+            }
             lista.push_back(Hito {
-                descripcion: hitos.get(i).unwrap(),
+                descripcion: descripcion_hito,
                 monto,
+                evidencia: String::from_str(&env, ""),
                 a_favor: 0,
                 en_contra: 0,
                 liberado: false,
@@ -136,6 +165,8 @@ impl Orbita {
         let proyecto = Proyecto {
             dueno: dueno.clone(),
             titulo,
+            descripcion,
+            imagen,
             meta,
             recaudado: 0,
             liberado: 0,
@@ -192,7 +223,9 @@ impl Orbita {
         nueva
     }
 
-    /// Vota el hito actual con el peso de la participación. Devuelve el estado del proyecto.
+    /// Vota liberar la plata del hito actual, con el peso de la participación.
+    /// Desde el segundo hito, exige la evidencia del hito anterior.
+    /// Devuelve el estado del proyecto.
     pub fn votar(env: Env, id: u32, aportante: Address, aprobar: bool) -> Estado {
         aportante.require_auth();
         let mut p = cargar(&env, id);
@@ -206,6 +239,9 @@ impl Orbita {
         }
 
         let n = p.hito_actual;
+        if n > 0 && p.hitos.get(n - 1).unwrap().evidencia.len() == 0 {
+            panic_with_error!(&env, Error::SinEvidencia);
+        }
         let clave_voto = Clave::Voto(id, n, aportante.clone());
         if env.storage().persistent().has(&clave_voto) {
             panic_with_error!(&env, Error::YaVoto);
@@ -265,6 +301,33 @@ impl Orbita {
         env.events()
             .publish((symbol_short!("liberado"), id), (n, monto));
         monto
+    }
+
+    /// El dueño carga la evidencia (URL) de un hito ya liberado. Se carga una sola vez.
+    pub fn cargar_evidencia(env: Env, id: u32, hito: u32, url: String) {
+        let mut p = cargar(&env, id);
+        p.dueno.require_auth();
+
+        if hito >= p.hitos.len() {
+            panic_with_error!(&env, Error::HitoInvalido);
+        }
+        let mut h = p.hitos.get(hito).unwrap();
+        if !h.liberado {
+            panic_with_error!(&env, Error::HitoInvalido);
+        }
+        if h.evidencia.len() > 0 {
+            panic_with_error!(&env, Error::EvidenciaYaCargada);
+        }
+        if url.len() == 0 || url.len() > MAX_URL {
+            panic_with_error!(&env, Error::TextoInvalido);
+        }
+
+        h.evidencia = url.clone();
+        p.hitos.set(hito, h);
+        guardar(&env, id, &p);
+
+        env.events()
+            .publish((symbol_short!("evidencia"), id), (hito, url));
     }
 
     /// Devuelve al aportante su parte proporcional de lo no liberado.

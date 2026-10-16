@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Despliega Órbita en testnet y corre una demo completa (crear, aportar, votar, liberar).
+# Despliega Órbita en testnet y corre una demo completa:
+# crear → aportar → votar → liberar etapa 1 → cargar evidencia → votar → liberar etapa 2.
 # Requiere: stellar CLI y rustup target add wasm32v1-none
 set -euo pipefail
 
@@ -33,10 +34,12 @@ invocar() { # $1 = cuenta firmante, resto = funcion y argumentos
   stellar contract invoke --id "$CONTRATO" --source "$firmante" --network "$RED" -- "$@" 2>&1 | tee -a "$LOG"
 }
 
-log "== 4. Demo: proyecto con 2 hitos (60 + 40 XLM) =="
+log "== 4. Demo: proyecto con 2 etapas (60 + 40 XLM) =="
 PLAZO=$(( $(date +%s) + 30 * 24 * 3600 ))
 invocar dueno crear_proyecto --dueno "$DUENO" \
   --titulo "Huerta comunitaria Barrio Esperanza" \
+  --descripcion "Huerta para 40 familias del barrio: semillas, herramientas y riego por goteo." \
+  --imagen "https://raw.githubusercontent.com/Matiasledesma449/Orbita/v2/docs/img/huerta.svg" \
   --plazo "$PLAZO" \
   --hitos '["Compra de semillas y herramientas","Sistema de riego por goteo"]' \
   --montos '["600000000","400000000"]'
@@ -45,11 +48,19 @@ log "== 5. Aportes (Ana 70 XLM, Beto 30 XLM) =="
 invocar ana aportar --id 0 --aportante "$ANA" --monto 700000000
 invocar beto aportar --id 0 --aportante "$BETO" --monto 300000000
 
-log "== 6. Ana aprueba el hito 1 y el dueño cobra =="
+log "== 6. Etapa 1: Ana vota liberar la plata y el dueño cobra =="
 invocar ana votar --id 0 --aportante "$ANA" --aprobar true
 invocar dueno liberar --id 0
 
-log "== 7. Estado final =="
+log "== 7. El dueño carga la evidencia de la etapa 1 =="
+invocar dueno cargar_evidencia --id 0 --hito 0 \
+  --url "https://raw.githubusercontent.com/Matiasledesma449/Orbita/v2/docs/img/evidencia-etapa1.svg"
+
+log "== 8. Etapa 2: Ana vota liberar la plata y el dueño cobra =="
+invocar ana votar --id 0 --aportante "$ANA" --aprobar true
+invocar dueno liberar --id 0
+
+log "== 9. Estado final =="
 invocar dueno proyecto --id 0
 
 log ""
