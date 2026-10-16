@@ -10,13 +10,14 @@ LOG=deploy.log
 log() { echo "$@" | tee -a "$LOG"; }
 
 log "== 1. Cuentas de prueba (fondeadas con friendbot) =="
-for cuenta in dueno ana beto; do
+for cuenta in dueno ana beto orbita; do
   stellar keys generate "$cuenta" --network "$RED" --fund 2>/dev/null || stellar keys fund "$cuenta" --network "$RED" || true
   log "$cuenta: $(stellar keys address "$cuenta")"
 done
 DUENO=$(stellar keys address dueno)
 ANA=$(stellar keys address ana)
 BETO=$(stellar keys address beto)
+ORBITA=$(stellar keys address orbita) # plataforma: cobra el 2 % de cada etapa liberada
 
 log "== 2. Compilar contrato =="
 stellar contract build
@@ -26,8 +27,10 @@ log "wasm: $WASM"
 log "== 3. Desplegar (token = XLM nativo de testnet) =="
 TOKEN=$(stellar contract id asset --asset native --network "$RED")
 log "token: $TOKEN"
-CONTRATO=$(stellar contract deploy --wasm "$WASM" --source dueno --network "$RED" -- --token "$TOKEN")
+CONTRATO=$(stellar contract deploy --wasm "$WASM" --source dueno --network "$RED" -- --token "$TOKEN" --plataforma "$ORBITA")
 log "CONTRACT_ID: $CONTRATO"
+saldo_orbita() { stellar contract invoke --id "$TOKEN" --source dueno --network "$RED" -- balance --id "$ORBITA" 2>/dev/null | tr -d '"'; }
+ORBITA_ANTES=$(saldo_orbita)
 
 invocar() { # $1 = cuenta firmante, resto = funcion y argumentos
   local firmante=$1; shift
@@ -62,6 +65,8 @@ invocar dueno liberar --id 0
 
 log "== 9. Estado final =="
 invocar dueno proyecto --id 0
+ORBITA_DESPUES=$(saldo_orbita)
+log "Comisión cobrada por Órbita: $(( ORBITA_DESPUES - ORBITA_ANTES )) stroops (1 XLM = 10.000.000)"
 
 log ""
 log "Listo. Contrato: https://stellar.expert/explorer/testnet/contract/$CONTRATO"

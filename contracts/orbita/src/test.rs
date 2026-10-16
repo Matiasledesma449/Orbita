@@ -11,6 +11,7 @@ struct Escenario {
     contrato: OrbitaClient<'static>,
     token: Address,
     dueno: Address,
+    plataforma: Address,
     ana: Address,
     beto: Address,
 }
@@ -23,7 +24,8 @@ fn escenario() -> Escenario {
     let activo = env.register_stellar_asset_contract_v2(admin);
     let token = activo.address();
 
-    let id = env.register(Orbita, (token.clone(),));
+    let plataforma = Address::generate(&env);
+    let id = env.register(Orbita, (token.clone(), plataforma.clone()));
     let contrato = OrbitaClient::new(&env, &id);
 
     let dueno = Address::generate(&env);
@@ -33,7 +35,7 @@ fn escenario() -> Escenario {
     minteo.mint(&ana, &1_000);
     minteo.mint(&beto, &1_000);
 
-    Escenario { env, contrato, token, dueno, ana, beto }
+    Escenario { env, contrato, token, dueno, plataforma, ana, beto }
 }
 
 fn crear(e: &Escenario) -> u32 {
@@ -72,10 +74,11 @@ fn flujo_completo_con_hito_rechazado() {
     assert_eq!(e.contrato.proyecto(&id).estado, Estado::Financiado);
     assert_eq!(saldo(&e, &e.contrato.address), 1_000);
 
-    // Hito 1: Ana (70%) aprueba y el dueño cobra 600.
+    // Hito 1: Ana (70%) aprueba y se liberan 600: 588 al dueño y 12 de comisión.
     e.contrato.votar(&id, &e.ana, &true);
-    assert_eq!(e.contrato.liberar(&id), 600);
-    assert_eq!(saldo(&e, &e.dueno), 600);
+    assert_eq!(e.contrato.liberar(&id), 588);
+    assert_eq!(saldo(&e, &e.dueno), 588);
+    assert_eq!(saldo(&e, &e.plataforma), 12);
     assert_eq!(e.contrato.proyecto(&id).hito_actual, 1);
     evidencia(&e, id, 0);
 
@@ -106,7 +109,10 @@ fn flujo_completo_exitoso() {
     evidencia(&e, id, 1);
 
     assert_eq!(e.contrato.proyecto(&id).estado, Estado::Completado);
-    assert_eq!(saldo(&e, &e.dueno), 1_000);
+    assert_eq!(e.contrato.proyecto(&id).liberado, 1_000);
+    assert_eq!(saldo(&e, &e.dueno), 980);
+    assert_eq!(saldo(&e, &e.plataforma), 20);
+    assert_eq!(saldo(&e, &e.contrato.address), 0);
 }
 
 #[test]
@@ -240,4 +246,19 @@ fn no_crea_proyecto_sin_titulo() {
         &vec![&e.env, String::from_str(&e.env, "Etapa")],
         &vec![&e.env, 100i128],
     );
+}
+
+#[test]
+fn comision_del_2_por_ciento() {
+    let e = escenario();
+    assert_eq!(e.contrato.plataforma(), e.plataforma);
+    let id = crear(&e);
+    e.contrato.aportar(&id, &e.ana, &700);
+    e.contrato.aportar(&id, &e.beto, &300);
+    e.contrato.votar(&id, &e.ana, &true);
+    assert_eq!(e.contrato.liberar(&id), 588);
+    assert_eq!(saldo(&e, &e.plataforma), 12);
+    assert_eq!(saldo(&e, &e.contrato.address), 400);
+    // La etapa liberada cuenta completa: el retorno comprometido se calcula sobre 600.
+    assert_eq!(e.contrato.proyecto(&id).liberado, 600);
 }

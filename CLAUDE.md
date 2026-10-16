@@ -19,7 +19,8 @@ El plan está en `plan/TICKETS.md`.
 
 - Toolchain: Rust 1.99, target `wasm32v1-none`, Stellar CLI 28.1.0, `soroban-sdk` 28.0.0 (Protocolo 29).
 - Web: `@stellar/stellar-sdk` 17.2.1 y `@stellar/freighter-api` 6.0.1 por CDN, con versión fija.
-- Cuentas de prueba del CLI: `dueno`, `ana`, `beto` (las claves viven en `~/.config/stellar`, nunca en el repo).
+- Cuentas de prueba del CLI: `dueno`, `ana`, `beto` y `orbita` (la plataforma, cobra la comisión del 2 %). Las claves viven en `~/.config/stellar`, nunca en el repo.
+- Diseño de inversión aprobado: `plan/ADR-001-inversion.md`.
 - Contrato v1 (en `main`): `CAACEJBBUWX4XGU7IPD7CMMYVCDLVZNDR5T2CIWSGNLPQTL3JTQ63HTZ`.
 - Si cambian funciones o argumentos del contrato, actualizar también `docs/app.js` y `scripts/deploy.sh`.
 - Nunca commitear claves secretas (`S...`), `target/`, `deploy.log` ni `.stellar/`.

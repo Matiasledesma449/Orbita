@@ -25,6 +25,8 @@ const MAX_TITULO: u32 = 80;
 const MAX_DESCRIPCION: u32 = 1_000;
 const MAX_URL: u32 = 300;
 const MAX_HITO: u32 = 120;
+/// Comisión de Órbita sobre cada etapa liberada, en puntos básicos (200 = 2 %).
+pub const COMISION_BPS: i128 = 200;
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -94,6 +96,7 @@ pub struct Proyecto {
 #[derive(Clone)]
 pub enum Clave {
     Token,
+    Plataforma,
     Cantidad,
     Proyecto(u32),
     Participacion(u32, Address),
@@ -105,9 +108,11 @@ pub struct Orbita;
 
 #[contractimpl]
 impl Orbita {
-    /// Se ejecuta una sola vez al desplegar. `token` es el activo que se recauda.
-    pub fn __constructor(env: Env, token: Address) {
+    /// Se ejecuta una sola vez al desplegar. `token` es el activo que se recauda y
+    /// `plataforma` la dirección de Órbita que cobra la comisión.
+    pub fn __constructor(env: Env, token: Address, plataforma: Address) {
         env.storage().instance().set(&Clave::Token, &token);
+        env.storage().instance().set(&Clave::Plataforma, &plataforma);
         env.storage().instance().set(&Clave::Cantidad, &0u32);
     }
 
@@ -272,7 +277,8 @@ impl Orbita {
         p.estado
     }
 
-    /// El dueño cobra el hito actual si tiene mayoría a favor. Devuelve el monto liberado.
+    /// El dueño cobra el hito actual si tiene mayoría a favor. Del monto de la etapa,
+    /// el 2 % va a la plataforma. Devuelve lo que recibió el dueño.
     pub fn liberar(env: Env, id: u32) -> i128 {
         let mut p = cargar(&env, id);
         p.dueno.require_auth();
@@ -287,7 +293,19 @@ impl Orbita {
         }
 
         let monto = hito.monto;
-        cliente_token(&env).transfer(&env.current_contract_address(), &p.dueno, &monto);
+        let comision = monto
+            .checked_mul(COMISION_BPS)
+            .expect("overflow")
+            / 10_000;
+        let neto = monto - comision;
+        let token = cliente_token(&env);
+        token.transfer(&env.current_contract_address(), &p.dueno, &neto);
+        if comision > 0 {
+            let plataforma: Address = env.storage().instance().get(&Clave::Plataforma).unwrap();
+            token.transfer(&env.current_contract_address(), &plataforma, &comision);
+            env.events()
+                .publish((symbol_short!("comision"), id), (n, comision));
+        }
 
         hito.liberado = true;
         p.hitos.set(n, hito);
@@ -300,7 +318,7 @@ impl Orbita {
 
         env.events()
             .publish((symbol_short!("liberado"), id), (n, monto));
-        monto
+        neto
     }
 
     /// El dueño carga la evidencia (URL) de un hito ya liberado. Se carga una sola vez.
@@ -386,6 +404,10 @@ impl Orbita {
 
     pub fn token(env: Env) -> Address {
         env.storage().instance().get(&Clave::Token).unwrap()
+    }
+
+    pub fn plataforma(env: Env) -> Address {
+        env.storage().instance().get(&Clave::Plataforma).unwrap()
     }
 }
 

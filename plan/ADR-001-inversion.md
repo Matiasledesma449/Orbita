@@ -1,6 +1,6 @@
 # ADR-001 — Órbita como herramienta de inversión
 
-- **Estado:** propuesto (falta la aprobación del usuario)
+- **Estado:** ✅ aprobado por el usuario (16/10/2026)
 - **Fecha:** 16/10/2026
 - **Parte de:** contrato v2 (T1 ✅: descripción, imagen y evidencia por etapa)
 - **Fuentes:** skill `stellar-dev:smart-contracts` (development.md, security.md: autorización, aritmética verificada, carreras entre transacciones, TTL, tokens de terceros)
@@ -134,13 +134,15 @@ En `liberar`: `comision = monto × 200 / 10_000`. Se transfiere `monto − comis
 - Eventos para cada cambio auditable: `comision`, `pago`, `cobro`, `oferta`, `compra`, `vencido`, `incumplido`.
 - Las fechas límite se guardan en el valor y se comparan con `env.ledger().timestamp()`, nunca con el TTL (security.md §8).
 
-## Preguntas abiertas (necesitan la aprobación del usuario)
+## Decisiones tomadas (antes eran preguntas abiertas)
 
-1. **Una sola fecha por etapa**, que sirve para la evidencia y para el pago. ¿O preferís dos fechas separadas?
-2. **Tipo "Producto":** el mínimo comprometido son unidades, y no se paga a través del contrato. Propuesta: para este tipo, "incumplido" depende solo de la evidencia y no de pagos.
-3. **Comisión descontada** del monto de la etapa (el dueño recibe el 98 %). ¿O se suma aparte?
-4. **Compra de la oferta entera** (sin compras parciales) para empezar.
-5. Mantener `reembolsar` como sinónimo de `cobrar`, para no romper la web.
+Aprobadas por el usuario el 16/10/2026:
+
+1. **Una sola fecha por etapa** (`fecha_limite`), que vale para cargar la evidencia y para pagar el mínimo comprometido.
+2. **Tipo "Producto":** el incumplimiento depende solo de la evidencia, no de pagos.
+3. **La comisión del 2 % se descuenta** del monto de la etapa: el dueño recibe el 98 %.
+4. **Se compra la oferta entera.** No hay compras parciales por ahora.
+5. **`reembolsar` se mantiene** como sinónimo de `cobrar`.
 
 ## Consecuencias
 

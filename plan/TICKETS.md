@@ -11,7 +11,7 @@ Estimación hecha el viernes 16/10 a las 18:20, con corte el sábado a las 6:00 
 | # | Ticket | Estimado | Antes de las 6:00 |
 |---|---|---|---|
 | T1 | Contrato v2: descripción, imagen y evidencia | — | ✅ hecho |
-| I1 | Comisión de Órbita (2 %) | 40 min | sí |
+| I1 | Comisión de Órbita (2 %) | 40 min | ✅ hecho |
 | I2 | Datos de inversión al publicar | 1 h | sí |
 | I3 | Etapa vencida sin evidencia → retiro sin votar | 1 h | sí |
 | I4 | Pagos del dueño y reparto acumulado (`pagar_retorno` / `cobrar`) | 2 h | sí |
@@ -65,7 +65,7 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 
 ---
 
-## I1. Comisión de Órbita: 2 % de cada etapa liberada ⬜ (40 min)
+## I1. Comisión de Órbita: 2 % de cada etapa liberada ✅ (40 min)
 
 **Objetivo:** que Órbita cobre su comisión automáticamente cada vez que se libera una etapa.
 
@@ -82,6 +82,8 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 **Prueba en testnet**
 - Desplegar con `--plataforma orbita`, hacer el recorrido hasta liberar la etapa 1 y ver en stellar.expert las dos transferencias (dueño y plataforma).
 - Evidencia: hash de `liberar` y saldo de la cuenta `orbita`.
+
+**Evidencia (16/10/2026)**: 13/13 tests. Contrato [`CDH7F25P…`](https://stellar.expert/explorer/testnet/contract/CDH7F25PSURV5WNLP2ZEWAF3PAVWHEGYAH2LVMZUYOAVQGDYBWFAVW5A). `liberar` etapa 1: [`628577a3…`](https://stellar.expert/explorer/testnet/tx/628577a341641accf60d0951de16c96e7a60a9cc5c5520f14a203b1e577a4d39) (58,8 XLM al dueño y 1,2 a Órbita). `liberar` etapa 2: [`c1fa7fb1…`](https://stellar.expert/explorer/testnet/tx/c1fa7fb16b2e2d05f83d6b2c0e5f5d8f093b23667ae13026dec34c74bea15035) (39,2 XLM y 0,8). Detalle en `plan/RESUMEN-I1.md`.
 
 ---
 
