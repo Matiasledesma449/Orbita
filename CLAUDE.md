@@ -1,0 +1,24 @@
+# Órbita — reglas de trabajo
+
+Órbita: financiamiento colectivo de proyectos por etapas sobre Stellar (contrato Soroban en Rust + web estática en `docs/`).
+El plan está en `plan/TICKETS.md`.
+
+## Reglas
+
+1. **Un ticket por vez.** Nunca empezar el siguiente sin aprobación del usuario.
+2. **Un ticket está terminado solo cuando funciona en Stellar TESTNET con una transacción real.** No alcanza con que compile. Evidencia obligatoria:
+   - tests en verde (`cargo test`);
+   - despliegue o prueba en testnet;
+   - hash de la transacción (con link a `https://stellar.expert/explorer/testnet/tx/<HASH>`).
+3. **Antes de escribir código de Stellar, consultar las skills de `stellar-dev`** (smart-contracts, dapp, assets, etc.). Como apoyo: https://developers.stellar.org/llms.txt y el MCP Raven si está conectado. Nada de prueba y error a ciegas: verificar versiones instaladas y documentación oficial antes de cambiar código.
+4. **Trabajar en la rama `v2`.** Commit al terminar cada ticket. **Nunca tocar `main` sin aprobación del usuario**: `main` es la entrega de la hackathon y tiene que seguir funcionando (GitHub Pages publica desde `main` /docs).
+5. **Explicar todo en español simple y breve.** El usuario es poco técnico.
+
+## Datos útiles
+
+- Toolchain: Rust 1.99, target `wasm32v1-none`, Stellar CLI 28.1.0, `soroban-sdk` 28.0.0 (Protocolo 29).
+- Web: `@stellar/stellar-sdk` 17.2.1 y `@stellar/freighter-api` 6.0.1 por CDN, con versión fija.
+- Cuentas de prueba del CLI: `dueno`, `ana`, `beto` (las claves viven en `~/.config/stellar`, nunca en el repo).
+- Contrato v1 (en `main`): `CAACEJBBUWX4XGU7IPD7CMMYVCDLVZNDR5T2CIWSGNLPQTL3JTQ63HTZ`.
+- Si cambian funciones o argumentos del contrato, actualizar también `docs/app.js` y `scripts/deploy.sh`.
+- Nunca commitear claves secretas (`S...`), `target/`, `deploy.log` ni `.stellar/`.
