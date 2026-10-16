@@ -2,7 +2,31 @@
 
 Reglas: un ticket por vez, en orden, en la rama `v2`. Cada ticket se cierra solo con **tests en verde + prueba en testnet + hash de transacción**. Ver `CLAUDE.md`.
 
-Estado: ⬜ pendiente · 🔄 en curso · ✅ terminado
+Estado: ⬜ pendiente · 🔄 en curso · ✅ terminado · 🌅 queda para después de las 6:00
+
+## Orden y estimación
+
+Estimación hecha el viernes 16/10 a las 18:20, con corte el sábado a las 6:00 (unas 11 h). Incluye la prueba en testnet de cada ticket, pero no el tiempo de espera de las aprobaciones.
+
+| # | Ticket | Estimado | Antes de las 6:00 |
+|---|---|---|---|
+| T1 | Contrato v2: descripción, imagen y evidencia | — | ✅ hecho |
+| I1 | Comisión de Órbita (2 %) | 40 min | sí |
+| I2 | Datos de inversión al publicar | 1 h | sí |
+| I3 | Etapa vencida sin evidencia → retiro sin votar | 1 h | sí |
+| I4 | Pagos del dueño y reparto acumulado (`pagar_retorno` / `cobrar`) | 2 h | sí |
+| I5 | Historial de pagos e "incumplido" | 1 h | sí |
+| T2 | USDC de testnet como moneda | 1 h 15 | sí |
+| T4 | Web: lo de T1 + datos de inversión, pagos y cobro | 2 h 30 | ⚠️ justo (es lo último que entra) |
+| I6 | Mercado de participaciones (ofrecer / comprar) | 2 h | 🌅 después |
+| T3 | Stellar Wallets Kit | 2 h | 🌅 después |
+| T5 | Confianza: números, reglas, FAQ | 1 h 30 | 🌅 después |
+| T6 | (Opcional) Passkeys | 3 h | 🌅 después |
+| T7 | README y pasar v2 a main | 45 min | 🌅 después (o antes, si sobra tiempo) |
+
+Hasta T4 suman unas 9 h 25 de trabajo. Con las esperas de aprobación, se llega a las 6:00 bastante justo. El mercado (I6) es el ticket más complejo y el que más riesgo tiene: queda para después, para priorizar que la web muestre la inversión.
+
+Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 
 ---
 
@@ -41,6 +65,129 @@ Estado: ⬜ pendiente · 🔄 en curso · ✅ terminado
 
 ---
 
+## I1. Comisión de Órbita: 2 % de cada etapa liberada ⬜ (40 min)
+
+**Objetivo:** que Órbita cobre su comisión automáticamente cada vez que se libera una etapa.
+
+**Qué cambia**
+- El constructor pasa a ser `__constructor(token, plataforma)`. La dirección de la plataforma se fija al desplegar.
+- `liberar`: el 98 % va al dueño y el 2 % a la plataforma. Evento `comision`.
+- Lectura `plataforma()`.
+- `deploy.sh`: crea la cuenta `orbita` (plataforma) y la pasa al desplegar.
+
+**Test**
+- Etapa de 600: el dueño recibe 588 y la plataforma 12. Con las dos etapas (600 + 400): el dueño recibe 980 y la plataforma 20, y el contrato queda en 0.
+- El retorno de `liberar` refleja lo que cobró el dueño.
+
+**Prueba en testnet**
+- Desplegar con `--plataforma orbita`, hacer el recorrido hasta liberar la etapa 1 y ver en stellar.expert las dos transferencias (dueño y plataforma).
+- Evidencia: hash de `liberar` y saldo de la cuenta `orbita`.
+
+---
+
+## I2. Datos de inversión al publicar ⬜ (1 h)
+
+**Objetivo:** que el dueño declare qué devuelve, en qué condiciones, cuánto mínimo por etapa y para cuándo.
+
+**Qué cambia**
+- `TipoRetorno`: `Prestamo`, `Ventas`, `Ganancias` o `Producto`.
+- `crear_proyecto(..., tipo_retorno, condiciones, plazo, hitos, montos, minimos, fechas)`.
+- `Hito` suma `minimo_retorno` y `fecha_limite`.
+- Validaciones: listas del mismo largo, mínimos ≥ 0, fechas crecientes y posteriores al `plazo` para juntar la plata, y condiciones de 1.000 caracteres como máximo.
+- `deploy.sh` y lo mínimo de `app.js` (valores por defecto) para que la web no se rompa.
+
+**Test**
+- Se guardan el tipo, las condiciones, los mínimos y las fechas.
+- Error si las fechas no son crecientes, si una fecha es anterior al plazo o si los largos no coinciden.
+
+**Prueba en testnet**
+- `crear_proyecto` con tipo "Préstamo", condiciones y mínimos y fechas por etapa. Leer `proyecto` y mostrar los datos.
+- Evidencia: hash de `crear_proyecto`.
+
+---
+
+## I3. Etapa vencida sin evidencia → retiro sin votar ⬜ (1 h)
+
+**Objetivo:** proteger a los aportantes si el dueño cobra una etapa y desaparece.
+
+**Qué cambia**
+- Función interna `aplicar_vencimientos`, que corre al principio de las funciones que cambian el estado, y función pública `revisar(id)`.
+- Si la última etapa liberada pasó su `fecha_limite` sin evidencia → `Fallido`, y lo que queda se vuelve reembolsable sin votar (evento `vencido`).
+- `reembolsar` funciona en ese caso. Por ahora usa la cuenta proporcional de hoy; en I4 pasa al reparto acumulado.
+
+**Test**
+- Liberar la etapa 1, adelantar el reloj del test más allá de la fecha sin cargar evidencia → `revisar` deja el proyecto `Fallido` y cada uno recupera su parte de lo que queda.
+- Con la evidencia cargada a tiempo, no pasa nada.
+
+**Prueba en testnet**
+- Proyecto con una fecha límite muy cercana (unos minutos). Se libera la etapa 1, se deja vencer, se llama a `revisar` y Ana y Beto reembolsan.
+- Evidencia: hashes de `revisar` y de los dos `reembolsar`.
+
+---
+
+## I4. Pagos del dueño y reparto acumulado ⬜ (2 h)
+
+**Objetivo:** que el dueño devuelva pagando al contrato y que cada aportante cobre su parte, aunque las participaciones cambien de mano.
+
+**Qué cambia (ver ADR-001)**
+- `Posicion { participacion, checkpoint, pendiente }` por aportante y `acumulado` por proyecto (× 10^12).
+- `pagar_retorno(id, pagador, monto)`: entra plata y se suma a `acumulado` y `total_pagado`.
+- `cobrar(id, aportante)`: cobra todo lo pendiente. `reembolsar` queda como sinónimo.
+- Los reembolsos por falla (plazo, voto en contra, I3) pasan a repartirse con el mismo mecanismo. La participación ya no se pone en cero.
+- Lecturas `posicion` y `pendiente`.
+
+**Test**
+- Ana 70 % y Beto 30 %: el dueño paga 100 → Ana cobra 70 y Beto 30. Cobrar dos veces da 0 la segunda.
+- Pagos en distintos momentos con aportes en el medio: cada uno cobra solo lo que le toca desde que entró.
+- Todos los tests de reembolso anteriores siguen pasando con el mecanismo nuevo.
+- El "polvo" del redondeo nunca hace que se reparta de más (el saldo del contrato nunca queda negativo).
+
+**Prueba en testnet**
+- Recorrido completo y después `pagar_retorno` del dueño, `cobrar` de Ana y `cobrar` de Beto.
+- Evidencia: hashes de `pagar_retorno` y de los dos `cobrar`.
+
+---
+
+## I5. Historial de pagos e "incumplido" ⬜ (1 h)
+
+**Objetivo:** que cualquiera vea lo prometido contra lo pagado, y que quede marcado si el dueño no cumple.
+
+**Qué cambia**
+- Cada `pagar_retorno` guarda `Pago(id, n) = { monto, fecha }`. Lectura `pago(id, n)`.
+- `aplicar_vencimientos` marca `incumplido = true` si a una fecha vencida no se llegó a la suma de mínimos comprometidos (evento `incumplido`). Para el tipo "Producto" solo cuenta la evidencia (a confirmar en el ADR).
+
+**Test**
+- Pagando a tiempo, no se marca. Sin pagar y pasada la fecha, `revisar` lo marca. Si paga tarde, la marca sigue.
+- El historial devuelve los pagos en orden con su fecha.
+
+**Prueba en testnet**
+- Proyecto con una fecha de pago cercana. Se deja vencer sin pagar, se llama a `revisar` y queda "incumplido". Después el dueño paga y el historial lo muestra.
+- Evidencia: hashes de `revisar` (incumplido) y de `pagar_retorno`.
+
+---
+
+## I6. Mercado de participaciones ⬜ 🌅 (2 h)
+
+**Objetivo:** que un aportante pueda vender su participación a otra persona, de forma segura y en una sola operación.
+
+**Qué cambia**
+- `ofrecer_venta(id, vendedor, cantidad, precio)`, `cancelar_oferta(id, vendedor)` y `comprar(id, comprador, vendedor, cantidad, precio_max)`.
+- Compra atómica: verifica la oferta y el precio máximo, asienta a los dos, pasa la plata al vendedor y la participación al comprador.
+- Regla: quien votó la etapa en curso no puede vender hasta que se resuelva.
+- Lista de vendedores con oferta abierta (máximo 20) para que la web los muestre.
+
+**Test**
+- La compra mueve la participación y la plata. Lo ganado antes de la venta queda con el vendedor.
+- Error si el vendedor votó la etapa en curso. Se puede vender después de que la etapa se libera.
+- Error si el precio cambió por encima de `precio_max` o si la cantidad no coincide.
+- El comprador vota con su nueva participación y no se puede votar dos veces con la misma participación.
+
+**Prueba en testnet**
+- Beto ofrece su participación, Ana la compra, el dueño paga un retorno y Ana cobra la parte que antes era de Beto.
+- Evidencia: hashes de `ofrecer_venta`, `comprar` y `cobrar`.
+
+---
+
 ## T2. USDC de testnet como moneda ⬜
 
 **Objetivo:** recaudar en USDC (dólar digital) en lugar de XLM, igual que se haría en producción.
@@ -63,7 +210,7 @@ Estado: ⬜ pendiente · 🔄 en curso · ✅ terminado
 
 ---
 
-## T3. Stellar Wallets Kit (Freighter y otras billeteras) ⬜
+## T3. Stellar Wallets Kit (Freighter y otras billeteras) ⬜ 🌅
 
 **Objetivo:** que el usuario pueda conectar Freighter, xBull, Lobstr, Albedo, etc. desde una sola ventana, en lugar de solo Freighter.
 
@@ -79,9 +226,11 @@ Estado: ⬜ pendiente · 🔄 en curso · ✅ terminado
 
 ---
 
-## T4. Web: descripción, imagen y evidencia ⬜
+## T4. Web: descripción, imagen, evidencia e inversión ⬜ ⚠️
 
 **Objetivo:** que la web muestre todo lo nuevo del contrato y que el dueño pueda cargar su evidencia sin usar la consola.
+
+**Suma por el ADR-001:** al publicar, elegir el tipo de retorno, las condiciones y el mínimo y la fecha por etapa; ver lo prometido contra lo pagado y la marca "incumplido"; botones "Pagar retorno" (dueño) y "Cobrar" (aportante); comisión del 2 % explicada. El mercado (I6) se suma a la web cuando se haga ese ticket.
 
 **Qué cambia**
 - Tarjeta de proyecto con imagen, descripción y, por cada etapa, el link "Ver evidencia".
@@ -95,7 +244,7 @@ Estado: ⬜ pendiente · 🔄 en curso · ✅ terminado
 
 ---
 
-## T5. Confianza: números, "Ver en la blockchain", reglas y FAQ ⬜
+## T5. Confianza: números, "Ver en la blockchain", reglas y FAQ ⬜ 🌅
 
 **Objetivo:** que alguien que no conoce cripto entienda y confíe.
 
@@ -112,7 +261,7 @@ Estado: ⬜ pendiente · 🔄 en curso · ✅ terminado
 
 ---
 
-## T6. (Opcional) Entrar con passkeys ⬜
+## T6. (Opcional) Entrar con passkeys ⬜ 🌅
 
 **Objetivo:** entrar con la huella o la cara del celular o la compu, sin instalar una billetera ni anotar 12 palabras.
 
