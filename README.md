@@ -35,7 +35,7 @@ Nadie, ni el dueño ni nosotros, puede mover la plata por fuera de esas reglas.
 
 | Dato | Valor |
 |---|---|
-| Demo funcional | _link (Netlify / Vercel / GitHub Pages)_ |
+| Demo funcional | https://matiasledesma449.github.io/Orbita/ |
 | Contract ID | `CAACEJBBUWX4XGU7IPD7CMMYVCDLVZNDR5T2CIWSGNLPQTL3JTQ63HTZ` |
 | Contrato en el explorador | https://stellar.expert/explorer/testnet/contract/CAACEJBBUWX4XGU7IPD7CMMYVCDLVZNDR5T2CIWSGNLPQTL3JTQ63HTZ |
 | Transacción de ejemplo (aporte) | [`1736d2de223f…`](https://stellar.expert/explorer/testnet/tx/1736d2de223fa5f65563ac7b53ddf1d61f834fa13671a1b277b93ad74c7578c9) |
