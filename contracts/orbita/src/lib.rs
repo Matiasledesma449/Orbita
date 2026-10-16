@@ -49,6 +49,7 @@ pub enum Error {
     SinEvidencia = 15,
     EvidenciaYaCargada = 16,
     FechasInvalidas = 17,
+    EtapaVencida = 18,
 }
 
 #[contracttype]
@@ -288,6 +289,7 @@ impl Orbita {
     pub fn votar(env: Env, id: u32, aportante: Address, aprobar: bool) -> Estado {
         aportante.require_auth();
         let mut p = cargar(&env, id);
+        aplicar_vencimientos(&env, id, &mut p);
 
         if p.estado != Estado::Financiado {
             panic_with_error!(&env, Error::NoFinanciado);
@@ -336,6 +338,7 @@ impl Orbita {
     pub fn liberar(env: Env, id: u32) -> i128 {
         let mut p = cargar(&env, id);
         p.dueno.require_auth();
+        aplicar_vencimientos(&env, id, &mut p);
 
         if p.estado != Estado::Financiado {
             panic_with_error!(&env, Error::NoFinanciado);
@@ -390,6 +393,9 @@ impl Orbita {
         if h.evidencia.len() > 0 {
             panic_with_error!(&env, Error::EvidenciaYaCargada);
         }
+        if env.ledger().timestamp() > h.fecha_limite {
+            panic_with_error!(&env, Error::EtapaVencida);
+        }
         if url.len() == 0 || url.len() > MAX_URL {
             panic_with_error!(&env, Error::TextoInvalido);
         }
@@ -407,11 +413,8 @@ impl Orbita {
         aportante.require_auth();
         let mut p = cargar(&env, id);
 
-        // Vencido sin llegar a la meta: pasa a fallido y todo es reembolsable.
-        if p.estado == Estado::Abierto && env.ledger().timestamp() > p.plazo {
-            p.estado = Estado::Fallido;
-            p.fondo_reembolso = p.recaudado;
-        }
+        // Plazo vencido sin meta o etapa vencida sin evidencia: pasa a fallido sin votar.
+        aplicar_vencimientos(&env, id, &mut p);
         if p.estado != Estado::Fallido {
             panic_with_error!(&env, Error::NoReembolsable);
         }
@@ -433,6 +436,16 @@ impl Orbita {
         env.events()
             .publish((symbol_short!("reembolso"), id), (aportante, monto));
         monto
+    }
+
+    /// Aplica los cambios que dependen de la fecha y los guarda. Cualquiera la puede
+    /// llamar. Devuelve el estado del proyecto.
+    pub fn revisar(env: Env, id: u32) -> Estado {
+        let mut p = cargar(&env, id);
+        if aplicar_vencimientos(&env, id, &mut p) {
+            guardar(&env, id, &p);
+        }
+        p.estado
     }
 
     // ---------- Lecturas ----------
@@ -463,6 +476,34 @@ impl Orbita {
     pub fn plataforma(env: Env) -> Address {
         env.storage().instance().get(&Clave::Plataforma).unwrap()
     }
+}
+
+/// Cambios de estado que dependen de la fecha. En Stellar un contrato no "despierta"
+/// solo: se aplican en la próxima transacción que toca el proyecto. Devuelve si cambió.
+fn aplicar_vencimientos(env: &Env, id: u32, p: &mut Proyecto) -> bool {
+    let ahora = env.ledger().timestamp();
+
+    // Venció el plazo sin llegar a la meta: todo lo recaudado es reembolsable.
+    if p.estado == Estado::Abierto && ahora > p.plazo {
+        p.estado = Estado::Fallido;
+        p.fondo_reembolso = p.recaudado;
+        env.events()
+            .publish((symbol_short!("vencido"), id), p.fondo_reembolso);
+        return true;
+    }
+
+    // La última etapa liberada venció sin evidencia: lo que queda es reembolsable.
+    if p.estado == Estado::Financiado && p.hito_actual > 0 {
+        let anterior = p.hitos.get(p.hito_actual - 1).unwrap();
+        if anterior.evidencia.len() == 0 && ahora > anterior.fecha_limite {
+            p.estado = Estado::Fallido;
+            p.fondo_reembolso = p.recaudado - p.liberado;
+            env.events()
+                .publish((symbol_short!("vencido"), id), p.fondo_reembolso);
+            return true;
+        }
+    }
+    false
 }
 
 fn cargar(env: &Env, id: u32) -> Proyecto {

@@ -377,3 +377,87 @@ fn devolucion_puede_ser_cualquier_fecha_posterior() {
     let id = crear_con_devolucion(&e, "10 % de ventas", vec![&e.env, 600, 400], vec![&e.env, 0, 0], vec![&e.env, 5_000, 9_000], 9_001);
     assert_eq!(e.contrato.proyecto(&id).fecha_devolucion, 9_001);
 }
+
+/// Proyecto de la demo financiado (Ana 700, Beto 300) con la etapa 1 votada y liberada.
+fn con_etapa_1_liberada(e: &Escenario) -> u32 {
+    let id = crear(e);
+    e.contrato.aportar(&id, &e.ana, &700);
+    e.contrato.aportar(&id, &e.beto, &300);
+    e.contrato.votar(&id, &e.ana, &true);
+    e.contrato.liberar(&id);
+    id
+}
+
+fn adelantar_reloj(e: &Escenario, hasta: u64) {
+    e.env.ledger().with_mut(|l| l.timestamp = hasta);
+}
+
+#[test]
+fn etapa_vencida_sin_evidencia_habilita_retiro() {
+    let e = escenario();
+    let id = con_etapa_1_liberada(&e);
+    adelantar_reloj(&e, 5_001); // la evidencia de la etapa 1 vencía en 5.000
+
+    assert_eq!(e.contrato.revisar(&id), Estado::Fallido);
+    let p = e.contrato.proyecto(&id);
+    assert_eq!(p.fondo_reembolso, 400); // lo que quedaba sin liberar
+
+    // Cada uno retira su parte proporcional, sin votar.
+    assert_eq!(e.contrato.reembolsar(&id, &e.ana), 280);
+    assert_eq!(e.contrato.reembolsar(&id, &e.beto), 120);
+    assert_eq!(saldo(&e, &e.contrato.address), 0);
+}
+
+#[test]
+fn reembolsar_aplica_el_vencimiento_sin_llamar_a_revisar() {
+    let e = escenario();
+    let id = con_etapa_1_liberada(&e);
+    adelantar_reloj(&e, 5_001);
+    assert_eq!(e.contrato.reembolsar(&id, &e.beto), 120);
+    assert_eq!(e.contrato.proyecto(&id).estado, Estado::Fallido);
+}
+
+#[test]
+fn con_evidencia_a_tiempo_no_vence() {
+    let e = escenario();
+    let id = con_etapa_1_liberada(&e);
+    evidencia(&e, id, 0);
+    adelantar_reloj(&e, 5_001);
+    assert_eq!(e.contrato.revisar(&id), Estado::Financiado);
+    e.contrato.votar(&id, &e.ana, &true); // la etapa 2 se sigue votando normalmente
+}
+
+#[test]
+fn antes_de_la_fecha_no_vence() {
+    let e = escenario();
+    let id = con_etapa_1_liberada(&e);
+    adelantar_reloj(&e, 5_000); // justo en la fecha límite todavía está a tiempo
+    assert_eq!(e.contrato.revisar(&id), Estado::Financiado);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #11)")]
+fn sin_vencer_no_se_puede_retirar() {
+    let e = escenario();
+    let id = con_etapa_1_liberada(&e);
+    e.contrato.reembolsar(&id, &e.ana);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #18)")]
+fn no_carga_evidencia_vencida() {
+    let e = escenario();
+    let id = con_etapa_1_liberada(&e);
+    adelantar_reloj(&e, 5_001);
+    evidencia(&e, id, 0);
+}
+
+#[test]
+fn revisar_marca_fallido_si_vence_el_plazo_sin_meta() {
+    let e = escenario();
+    let id = crear(&e);
+    e.contrato.aportar(&id, &e.ana, &200);
+    adelantar_reloj(&e, 1_001);
+    assert_eq!(e.contrato.revisar(&id), Estado::Fallido);
+    assert_eq!(e.contrato.proyecto(&id).fondo_reembolso, 200);
+}

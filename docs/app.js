@@ -17,6 +17,7 @@ const ERRORES = {
   13: "Revisá los textos: falta el título o alguno es demasiado largo.", 14: "Esa etapa todavía no se liberó.",
   15: "El dueño todavía no cargó la evidencia de la etapa anterior.", 16: "La evidencia de esa etapa ya estaba cargada.",
   17: "Revisá las fechas: tienen que ser posteriores al plazo y crecientes.",
+  18: "Venció la fecha para cargar la evidencia de esa etapa.",
 };
 
 let cuenta = null;

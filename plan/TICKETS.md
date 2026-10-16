@@ -13,7 +13,7 @@ Estimación hecha el viernes 16/10 a las 18:20, con corte el sábado a las 6:00 
 | T1 | Contrato v2: descripción, imagen y evidencia | — | ✅ hecho |
 | I1 | Comisión de Órbita (2 %) | 40 min | ✅ hecho |
 | I2 | Datos de inversión al publicar | 1 h | ✅ hecho |
-| I3 | Etapa vencida sin evidencia → retiro sin votar | 1 h | sí |
+| I3 | Etapa vencida sin evidencia → retiro sin votar | 1 h | ✅ hecho |
 | I4 | Pagos del dueño y reparto acumulado (`pagar_retorno` / `cobrar`) | 2 h | sí |
 | I5 | Historial de pagos e "incumplido" | 1 h | sí |
 | T2 | USDC de testnet como moneda | 1 h 15 | sí |
@@ -112,7 +112,7 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 
 ---
 
-## I3. Etapa vencida sin evidencia → retiro sin votar ⬜ (1 h)
+## I3. Etapa vencida sin evidencia → retiro sin votar ✅ (1 h)
 
 **Objetivo:** proteger a los aportantes si el dueño cobra una etapa y desaparece.
 
@@ -128,6 +128,8 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 **Prueba en testnet**
 - Proyecto con una fecha límite muy cercana (unos minutos). Se libera la etapa 1, se deja vencer, se llama a `revisar` y Ana y Beto reembolsan.
 - Evidencia: hashes de `revisar` y de los dos `reembolsar`.
+
+**Evidencia (16/10/2026)**: 28/28 tests. Contrato [`CD6HQDUG…`](https://stellar.expert/explorer/testnet/contract/CD6HQDUG2SY4MMEFUPGQFPW3VMBZKDMU3RC5LIU3U5YYVLPMLLZ3VSSM). `revisar` → Fallido: [`705ef752…`](https://stellar.expert/explorer/testnet/tx/705ef7526aeb14d22e83c647c1627fe205fe80f47a4c8ede44377a48dc913e0c). Ana retira 28 XLM: [`b8075985…`](https://stellar.expert/explorer/testnet/tx/b8075985f2208b7c0a8ea5caac1fa5341c33dbfd4f00c33a539f3c2ac5c6b2b3). Beto retira 12 XLM: [`5847252d…`](https://stellar.expert/explorer/testnet/tx/5847252d88571ca1a3865860d7cc0c3c8eb38e53a7911a29717d39fc0b6ea23a). Detalle en `plan/RESUMEN-I3.md`.
 
 ---
 
