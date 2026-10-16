@@ -1,0 +1,142 @@
+#![cfg(test)]
+
+use super::*;
+use soroban_sdk::{
+    testutils::{Address as _, Ledger},
+    token, vec, Address, Env, String,
+};
+
+struct Escenario {
+    env: Env,
+    contrato: OrbitaClient<'static>,
+    token: Address,
+    dueno: Address,
+    ana: Address,
+    beto: Address,
+}
+
+fn escenario() -> Escenario {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let activo = env.register_stellar_asset_contract_v2(admin);
+    let token = activo.address();
+
+    let id = env.register(Orbita, (token.clone(),));
+    let contrato = OrbitaClient::new(&env, &id);
+
+    let dueno = Address::generate(&env);
+    let ana = Address::generate(&env);
+    let beto = Address::generate(&env);
+    let minteo = token::StellarAssetClient::new(&env, &token);
+    minteo.mint(&ana, &1_000);
+    minteo.mint(&beto, &1_000);
+
+    Escenario { env, contrato, token, dueno, ana, beto }
+}
+
+fn crear(e: &Escenario) -> u32 {
+    e.contrato.crear_proyecto(
+        &e.dueno,
+        &String::from_str(&e.env, "Huerta comunitaria"),
+        &1_000u64,
+        &vec![
+            &e.env,
+            String::from_str(&e.env, "Compra de semillas"),
+            String::from_str(&e.env, "Riego por goteo"),
+        ],
+        &vec![&e.env, 600i128, 400i128],
+    )
+}
+
+fn saldo(e: &Escenario, quien: &Address) -> i128 {
+    token::Client::new(&e.env, &e.token).balance(quien)
+}
+
+#[test]
+fn flujo_completo_con_hito_rechazado() {
+    let e = escenario();
+    let id = crear(&e);
+    assert_eq!(e.contrato.cantidad(), 1);
+    assert_eq!(e.contrato.proyecto(&id).meta, 1_000);
+
+    e.contrato.aportar(&id, &e.ana, &700);
+    e.contrato.aportar(&id, &e.beto, &300);
+    assert_eq!(e.contrato.proyecto(&id).estado, Estado::Financiado);
+    assert_eq!(saldo(&e, &e.contrato.address), 1_000);
+
+    // Hito 1: Ana (70%) aprueba y el dueño cobra 600.
+    e.contrato.votar(&id, &e.ana, &true);
+    assert_eq!(e.contrato.liberar(&id), 600);
+    assert_eq!(saldo(&e, &e.dueno), 600);
+    assert_eq!(e.contrato.proyecto(&id).hito_actual, 1);
+
+    // Hito 2: los dos rechazan, el proyecto falla y se reembolsan los 400 restantes.
+    e.contrato.votar(&id, &e.beto, &false);
+    assert_eq!(e.contrato.votar(&id, &e.ana, &false), Estado::Fallido);
+    assert_eq!(e.contrato.reembolsar(&id, &e.ana), 280);
+    assert_eq!(e.contrato.reembolsar(&id, &e.beto), 120);
+    assert_eq!(saldo(&e, &e.ana), 300 + 280);
+    assert_eq!(saldo(&e, &e.beto), 700 + 120);
+    assert_eq!(saldo(&e, &e.contrato.address), 0);
+}
+
+#[test]
+fn flujo_completo_exitoso() {
+    let e = escenario();
+    let id = crear(&e);
+    e.contrato.aportar(&id, &e.ana, &500);
+    e.contrato.aportar(&id, &e.beto, &500);
+
+    e.contrato.votar(&id, &e.ana, &true);
+    e.contrato.votar(&id, &e.beto, &true);
+    e.contrato.liberar(&id);
+    e.contrato.votar(&id, &e.ana, &true);
+    e.contrato.votar(&id, &e.beto, &true);
+    e.contrato.liberar(&id);
+
+    assert_eq!(e.contrato.proyecto(&id).estado, Estado::Completado);
+    assert_eq!(saldo(&e, &e.dueno), 1_000);
+}
+
+#[test]
+fn reembolso_si_vence_sin_meta() {
+    let e = escenario();
+    let id = crear(&e);
+    e.contrato.aportar(&id, &e.ana, &200);
+    e.env.ledger().with_mut(|l| l.timestamp = 2_000);
+    assert_eq!(e.contrato.reembolsar(&id, &e.ana), 200);
+    assert_eq!(saldo(&e, &e.ana), 1_000);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #10)")]
+fn no_libera_sin_mayoria() {
+    let e = escenario();
+    let id = crear(&e);
+    e.contrato.aportar(&id, &e.ana, &500);
+    e.contrato.aportar(&id, &e.beto, &500);
+    e.contrato.votar(&id, &e.ana, &true); // 50% no alcanza
+    e.contrato.liberar(&id);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #9)")]
+fn no_vota_dos_veces() {
+    let e = escenario();
+    let id = crear(&e);
+    e.contrato.aportar(&id, &e.ana, &700);
+    e.contrato.aportar(&id, &e.beto, &300);
+    e.contrato.votar(&id, &e.beto, &false);
+    e.contrato.votar(&id, &e.beto, &false);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #6)")]
+fn no_supera_la_meta() {
+    let e = escenario();
+    let id = crear(&e);
+    e.contrato.aportar(&id, &e.ana, &900);
+    e.contrato.aportar(&id, &e.beto, &200); // 900 + 200 > 1.000
+}

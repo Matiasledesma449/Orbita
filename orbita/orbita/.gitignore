@@ -1,0 +1,4 @@
+target/
+deploy.log
+.stellar/
+node_modules/
