@@ -461,3 +461,147 @@ fn revisar_marca_fallido_si_vence_el_plazo_sin_meta() {
     assert_eq!(e.contrato.revisar(&id), Estado::Fallido);
     assert_eq!(e.contrato.proyecto(&id).fondo_reembolso, 200);
 }
+
+/// Proyecto de la demo completado: Ana 700 (70 %), Beto 300 (30 %), 1.000 liberados.
+fn completado(e: &Escenario) -> u32 {
+    let id = con_etapa_1_liberada(e);
+    evidencia(e, id, 0);
+    e.contrato.votar(&id, &e.ana, &true);
+    e.contrato.liberar(&id);
+    id
+}
+
+fn darle_al_dueno(e: &Escenario, monto: i128) {
+    token::StellarAssetClient::new(&e.env, &e.token).mint(&e.dueno, &monto);
+}
+
+#[test]
+fn el_pago_se_reparte_en_proporcion() {
+    let e = escenario();
+    let id = completado(&e);
+    darle_al_dueno(&e, 1_100);
+    assert_eq!(e.contrato.pagar_retorno(&id, &e.dueno, &1_100), 1_100);
+
+    assert_eq!(e.contrato.pendiente(&id, &e.ana), 770);
+    assert_eq!(e.contrato.pendiente(&id, &e.beto), 330);
+    assert_eq!(e.contrato.cobrar(&id, &e.ana), 770);
+    assert_eq!(e.contrato.cobrar(&id, &e.beto), 330);
+    assert_eq!(saldo(&e, &e.contrato.address), 0);
+    assert_eq!(e.contrato.proyecto(&id).total_pagado, 1_100);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #11)")]
+fn no_se_cobra_dos_veces() {
+    let e = escenario();
+    let id = completado(&e);
+    darle_al_dueno(&e, 100);
+    e.contrato.pagar_retorno(&id, &e.dueno, &100);
+    assert_eq!(e.contrato.cobrar(&id, &e.ana), 70);
+    e.contrato.cobrar(&id, &e.ana); // ya no queda nada
+}
+
+#[test]
+fn varios_pagos_se_acumulan() {
+    let e = escenario();
+    let id = completado(&e);
+    darle_al_dueno(&e, 150);
+    e.contrato.pagar_retorno(&id, &e.dueno, &100);
+    assert_eq!(e.contrato.cobrar(&id, &e.ana), 70); // Ana cobra entre pagos
+    e.contrato.pagar_retorno(&id, &e.dueno, &50);
+    assert_eq!(e.contrato.cobrar(&id, &e.ana), 35);
+    assert_eq!(e.contrato.cobrar(&id, &e.beto), 45); // Beto cobra los dos juntos
+    assert_eq!(saldo(&e, &e.contrato.address), 0);
+}
+
+#[test]
+fn reembolso_y_retorno_se_cobran_juntos() {
+    // El proyecto falla en la etapa 2, pero el dueño igual devuelve algo por la etapa 1.
+    let e = escenario();
+    let id = con_etapa_1_liberada(&e);
+    evidencia(&e, id, 0);
+    e.contrato.votar(&id, &e.beto, &false);
+    assert_eq!(e.contrato.votar(&id, &e.ana, &false), Estado::Fallido);
+    darle_al_dueno(&e, 66);
+    e.contrato.pagar_retorno(&id, &e.dueno, &66);
+
+    // Reembolso de lo no liberado (400) + retorno (66), redondeando hacia abajo.
+    assert_eq!(e.contrato.cobrar(&id, &e.ana), 280 + 46);
+    assert_eq!(e.contrato.reembolsar(&id, &e.beto), 120 + 19); // reembolsar = cobrar
+    // El "polvo" del redondeo queda en el contrato: nunca se reparte de más.
+    assert_eq!(saldo(&e, &e.contrato.address), 1);
+}
+
+#[test]
+fn la_participacion_no_se_pierde_al_reembolsar() {
+    let e = escenario();
+    let id = con_etapa_1_liberada(&e);
+    adelantar_reloj(&e, 5_001); // vence sin evidencia → reembolso
+    assert_eq!(e.contrato.cobrar(&id, &e.ana), 280);
+    assert_eq!(e.contrato.participacion(&id, &e.ana), 700);
+    // Si el dueño después devuelve algo, Ana igual cobra su parte.
+    darle_al_dueno(&e, 100);
+    e.contrato.pagar_retorno(&id, &e.dueno, &100);
+    assert_eq!(e.contrato.cobrar(&id, &e.ana), 70);
+}
+
+#[test]
+fn cualquiera_puede_pagar_en_nombre_del_dueno() {
+    let e = escenario();
+    let id = completado(&e);
+    e.contrato.pagar_retorno(&id, &e.ana, &10); // Ana todavía tiene 300 de saldo
+    assert_eq!(e.contrato.cobrar(&id, &e.beto), 3);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #7)")]
+fn no_se_paga_retorno_sin_plata_liberada() {
+    let e = escenario();
+    let id = crear(&e);
+    e.contrato.aportar(&id, &e.ana, &700);
+    e.contrato.pagar_retorno(&id, &e.ana, &10);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #3)")]
+fn pago_mayor_a_cero() {
+    let e = escenario();
+    let id = completado(&e);
+    e.contrato.pagar_retorno(&id, &e.dueno, &0);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #8)")]
+fn sin_participacion_no_se_cobra() {
+    let e = escenario();
+    let id = completado(&e);
+    e.contrato.cobrar(&id, &e.dueno);
+}
+
+#[test]
+fn nunca_se_reparte_mas_de_lo_que_entra() {
+    // Pagos con montos "incómodos" y cobros intercalados: el contrato nunca queda debiendo.
+    let e = escenario();
+    let id = completado(&e);
+    darle_al_dueno(&e, 10_000);
+    let mut pagado = 0i128;
+    let mut cobrado = 0i128;
+    for monto in [1i128, 7, 13, 333, 999, 2, 3_001] {
+        e.contrato.pagar_retorno(&id, &e.dueno, &monto);
+        pagado += monto;
+        for quien in [&e.ana, &e.beto] {
+            if e.contrato.pendiente(&id, quien) > 0 {
+                cobrado += e.contrato.cobrar(&id, quien);
+            }
+        }
+        assert!(cobrado <= pagado);
+        assert_eq!(saldo(&e, &e.contrato.address), pagado - cobrado);
+    }
+    // El "polvo" no crece con la cantidad de cobros: a lo sumo 1 por aportante.
+    assert!(pagado - cobrado <= 2);
+    // Y no se pierde: con un pago más, la fracción guardada se cobra.
+    e.contrato.pagar_retorno(&id, &e.dueno, &1_000);
+    cobrado += e.contrato.cobrar(&id, &e.ana) + e.contrato.cobrar(&id, &e.beto);
+    assert_eq!(pagado + 1_000 - cobrado, saldo(&e, &e.contrato.address));
+    assert!(saldo(&e, &e.contrato.address) <= 2);
+}

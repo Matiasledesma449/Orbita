@@ -411,7 +411,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Participacion"
+                    "symbol": "Posicion"
                   },
                   {
                     "u32": 0
@@ -423,7 +423,40 @@
               },
               "durability": "persistent",
               "val": {
-                "i128": "700"
+                "map": [
+                  {
+                    "key": {
+                      "symbol": "checkpoint"
+                    },
+                    "val": {
+                      "i128": "0"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "participacion"
+                    },
+                    "val": {
+                      "i128": "700"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "pendiente"
+                    },
+                    "val": {
+                      "i128": "0"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "resto"
+                    },
+                    "val": {
+                      "i128": "0"
+                    }
+                  }
+                ]
               }
             }
           },
@@ -441,7 +474,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Participacion"
+                    "symbol": "Posicion"
                   },
                   {
                     "u32": 0
@@ -453,7 +486,40 @@
               },
               "durability": "persistent",
               "val": {
-                "i128": "0"
+                "map": [
+                  {
+                    "key": {
+                      "symbol": "checkpoint"
+                    },
+                    "val": {
+                      "i128": "400000000000"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "participacion"
+                    },
+                    "val": {
+                      "i128": "300"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "pendiente"
+                    },
+                    "val": {
+                      "i128": "0"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "resto"
+                    },
+                    "val": {
+                      "i128": "0"
+                    }
+                  }
+                ]
               }
             }
           },
@@ -481,6 +547,14 @@
               "durability": "persistent",
               "val": {
                 "map": [
+                  {
+                    "key": {
+                      "symbol": "acumulado"
+                    },
+                    "val": {
+                      "i128": "400000000000"
+                    }
+                  },
                   {
                     "key": {
                       "symbol": "condiciones"
@@ -736,6 +810,14 @@
                     },
                     "val": {
                       "string": "Huerta comunitaria"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "total_pagado"
+                    },
+                    "val": {
+                      "i128": "0"
                     }
                   }
                 ]

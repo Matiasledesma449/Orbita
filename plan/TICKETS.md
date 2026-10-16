@@ -14,7 +14,7 @@ Estimación hecha el viernes 16/10 a las 18:20, con corte el sábado a las 6:00 
 | I1 | Comisión de Órbita (2 %) | 40 min | ✅ hecho |
 | I2 | Datos de inversión al publicar | 1 h | ✅ hecho |
 | I3 | Etapa vencida sin evidencia → retiro sin votar | 1 h | ✅ hecho |
-| I4 | Pagos del dueño y reparto acumulado (`pagar_retorno` / `cobrar`) | 2 h | sí |
+| I4 | Pagos del dueño y reparto acumulado (`pagar_retorno` / `cobrar`) | 2 h | ✅ hecho |
 | I5 | Historial de pagos e "incumplido" | 1 h | sí |
 | T2 | USDC de testnet como moneda | 1 h 15 | sí |
 | T4 | Web: lo de T1 + datos de inversión, pagos y cobro | 2 h 30 | ⚠️ justo (es lo último que entra) |
@@ -133,7 +133,7 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 
 ---
 
-## I4. Pagos del dueño y reparto acumulado ⬜ (2 h)
+## I4. Pagos del dueño y reparto acumulado ✅ (2 h)
 
 **Objetivo:** que el dueño devuelva pagando al contrato y que cada aportante cobre su parte, aunque las participaciones cambien de mano.
 
@@ -153,6 +153,8 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 **Prueba en testnet**
 - Recorrido completo y después `pagar_retorno` del dueño, `cobrar` de Ana y `cobrar` de Beto.
 - Evidencia: hashes de `pagar_retorno` y de los dos `cobrar`.
+
+**Evidencia (16/10/2026)**: 38/38 tests. Contrato [`CAXKH46K…`](https://stellar.expert/explorer/testnet/contract/CAXKH46KM2NMLSYC6BDDFHLQCZCENZKI7N7HOWZH3BSMOLR2ZH3X3GX3). El dueño paga 110 XLM: [`b9463726…`](https://stellar.expert/explorer/testnet/tx/b9463726a8e2878cdf15653aa18a353bf894d83158f25b130aa263f4c710f271). Ana cobra 77: [`f7c6a6d8…`](https://stellar.expert/explorer/testnet/tx/f7c6a6d837623f4124d2cd0542a2126199c617c36ad2409794792e614f1e1164). Beto cobra 33: [`91e138f0…`](https://stellar.expert/explorer/testnet/tx/91e138f01caa0347e822b5aab506ea1ba54ac2da6ef89c8efb0ef7e5cd06652e). Saldo final del contrato: 0. Detalle en `plan/RESUMEN-I4.md`.
 
 ---
 

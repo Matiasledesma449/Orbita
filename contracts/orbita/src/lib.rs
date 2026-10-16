@@ -11,6 +11,9 @@
 //!   adelante, el dueño tiene que haber cargado la evidencia (URL) de la anterior.
 //! - Si más de la mitad vota en contra, o el plazo vence sin llegar a la meta,
 //!   cada aportante recupera su parte proporcional de lo que no se liberó.
+//! - El dueño devuelve pagando al contrato (`pagar_retorno`) y el contrato reparte en
+//!   proporción a las participaciones con un "reparto acumulado" (ver ADR-001). Los
+//!   reembolsos usan el mismo mecanismo: cada aportante cobra todo con `cobrar`.
 
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, panic_with_error, symbol_short, token,
@@ -27,6 +30,8 @@ const MAX_URL: u32 = 300;
 const MAX_HITO: u32 = 120;
 /// Comisión de Órbita sobre cada etapa liberada, en puntos básicos (200 = 2 %).
 pub const COMISION_BPS: i128 = 200;
+/// Escala del reparto acumulado, para no perder decimales al dividir.
+pub const PRECISION: i128 = 1_000_000_000_000;
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -42,7 +47,8 @@ pub enum Error {
     SinParticipacion = 8,
     YaVoto = 9,
     SinMayoria = 10,
-    NoReembolsable = 11,
+    /// No hay nada para cobrar todavía (ni reembolso ni retorno).
+    NadaParaCobrar = 11,
     PlazoInvalido = 12,
     TextoInvalido = 13,
     HitoInvalido = 14,
@@ -114,7 +120,27 @@ pub struct Proyecto {
     pub hitos: Vec<Hito>,
     pub hito_actual: u32,
     pub estado: Estado,
+    /// Lo que quedó para reembolsar cuando el proyecto falló.
     pub fondo_reembolso: i128,
+    /// Reparto acumulado: plata que le corresponde a cada unidad de participación
+    /// desde el inicio, multiplicada por `PRECISION`.
+    pub acumulado: i128,
+    /// Todo lo que pagó el dueño como retorno.
+    pub total_pagado: i128,
+}
+
+/// Lo que tiene cada aportante en un proyecto.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Posicion {
+    pub participacion: i128,
+    /// Valor de `acumulado` la última vez que se le hizo la cuenta.
+    pub checkpoint: i128,
+    /// Plata ya ganada y todavía no cobrada.
+    pub pendiente: i128,
+    /// Fracción de unidad ganada (× `PRECISION`) que todavía no llega a 1. Se guarda
+    /// para que el redondeo no se pierda en cada cobro.
+    pub resto: i128,
 }
 
 #[contracttype]
@@ -124,7 +150,7 @@ pub enum Clave {
     Plataforma,
     Cantidad,
     Proyecto(u32),
-    Participacion(u32, Address),
+    Posicion(u32, Address),
     Voto(u32, u32, Address),
 }
 
@@ -235,6 +261,8 @@ impl Orbita {
             hito_actual: 0,
             estado: Estado::Abierto,
             fondo_reembolso: 0,
+            acumulado: 0,
+            total_pagado: 0,
         };
         guardar(&env, id, &proyecto);
         env.storage().instance().set(&Clave::Cantidad, &(id + 1));
@@ -265,12 +293,12 @@ impl Orbita {
 
         cliente_token(&env).transfer(&aportante, &env.current_contract_address(), &monto);
 
-        let clave = Clave::Participacion(id, aportante.clone());
-        let nueva: i128 = env.storage().persistent().get(&clave).unwrap_or(0) + monto;
-        env.storage().persistent().set(&clave, &nueva);
-        env.storage()
-            .persistent()
-            .extend_ttl(&clave, TTL_MINIMO, TTL_MAXIMO);
+        // Se asienta antes de cambiar la participación (ver ADR-001).
+        let mut pos = cargar_posicion(&env, id, &aportante);
+        asentar(&p, &mut pos);
+        pos.participacion += monto;
+        let nueva = pos.participacion;
+        guardar_posicion(&env, id, &aportante, &pos);
 
         p.recaudado += monto;
         if p.recaudado == p.meta {
@@ -319,13 +347,14 @@ impl Orbita {
             hito.en_contra += peso;
         }
 
-        if hito.en_contra * 2 > p.recaudado {
-            p.estado = Estado::Fallido;
-            p.fondo_reembolso = p.recaudado - p.liberado;
-            env.events()
-                .publish((symbol_short!("fallido"), id), p.fondo_reembolso);
-        }
+        let rechazado = hito.en_contra * 2 > p.recaudado;
         p.hitos.set(n, hito);
+        if rechazado {
+            let fondo = p.recaudado - p.liberado;
+            fallar(&env, &mut p, fondo);
+            env.events()
+                .publish((symbol_short!("fallido"), id), fondo);
+        }
         guardar(&env, id, &p);
 
         env.events()
@@ -408,34 +437,62 @@ impl Orbita {
             .publish((symbol_short!("evidencia"), id), (hito, url));
     }
 
-    /// Devuelve al aportante su parte proporcional de lo no liberado.
-    pub fn reembolsar(env: Env, id: u32, aportante: Address) -> i128 {
-        aportante.require_auth();
+    /// El dueño (o cualquiera en su nombre) paga un retorno al contrato. Se reparte en
+    /// proporción a las participaciones. Devuelve el total pagado hasta ahora.
+    pub fn pagar_retorno(env: Env, id: u32, pagador: Address, monto: i128) -> i128 {
+        pagador.require_auth();
         let mut p = cargar(&env, id);
-
-        // Plazo vencido sin meta o etapa vencida sin evidencia: pasa a fallido sin votar.
         aplicar_vencimientos(&env, id, &mut p);
-        if p.estado != Estado::Fallido {
-            panic_with_error!(&env, Error::NoReembolsable);
+
+        if monto <= 0 {
+            panic_with_error!(&env, Error::MontoInvalido);
+        }
+        // Solo tiene sentido devolver si el dueño recibió plata.
+        if p.liberado == 0 {
+            panic_with_error!(&env, Error::NoFinanciado);
         }
 
-        let peso = participacion_de(&env, id, &aportante);
-        if peso <= 0 {
-            panic_with_error!(&env, Error::SinParticipacion);
-        }
-        let monto = peso * p.fondo_reembolso / p.recaudado;
-
-        let clave = Clave::Participacion(id, aportante.clone());
-        env.storage().persistent().set(&clave, &0i128);
+        cliente_token(&env).transfer(&pagador, &env.current_contract_address(), &monto);
+        repartir(&mut p, monto);
+        p.total_pagado = p.total_pagado.checked_add(monto).expect("overflow");
         guardar(&env, id, &p);
 
-        if monto > 0 {
-            cliente_token(&env).transfer(&env.current_contract_address(), &aportante, &monto);
+        env.events()
+            .publish((symbol_short!("pago"), id), (pagador, monto));
+        p.total_pagado
+    }
+
+    /// Cobra todo lo pendiente del aportante: reembolsos y retornos. Devuelve lo cobrado.
+    pub fn cobrar(env: Env, id: u32, aportante: Address) -> i128 {
+        aportante.require_auth();
+        let mut p = cargar(&env, id);
+        // Plazo vencido sin meta o etapa vencida sin evidencia: pasa a fallido sin votar.
+        if aplicar_vencimientos(&env, id, &mut p) {
+            guardar(&env, id, &p);
         }
 
+        let mut pos = cargar_posicion(&env, id, &aportante);
+        if pos.participacion <= 0 && pos.pendiente <= 0 {
+            panic_with_error!(&env, Error::SinParticipacion);
+        }
+        asentar(&p, &mut pos);
+        let monto = pos.pendiente;
+        if monto <= 0 {
+            panic_with_error!(&env, Error::NadaParaCobrar);
+        }
+        // Primero se pone en cero y se guarda; después se transfiere.
+        pos.pendiente = 0;
+        guardar_posicion(&env, id, &aportante, &pos);
+        cliente_token(&env).transfer(&env.current_contract_address(), &aportante, &monto);
+
         env.events()
-            .publish((symbol_short!("reembolso"), id), (aportante, monto));
+            .publish((symbol_short!("cobro"), id), (aportante, monto));
         monto
+    }
+
+    /// Sinónimo de `cobrar`, para compatibilidad (ADR-001, decisión 5).
+    pub fn reembolsar(env: Env, id: u32, aportante: Address) -> i128 {
+        Self::cobrar(env, id, aportante)
     }
 
     /// Aplica los cambios que dependen de la fecha y los guarda. Cualquiera la puede
@@ -462,6 +519,18 @@ impl Orbita {
         participacion_de(&env, id, &aportante)
     }
 
+    pub fn posicion(env: Env, id: u32, aportante: Address) -> Posicion {
+        cargar_posicion(&env, id, &aportante)
+    }
+
+    /// Lo que el aportante podría cobrar ahora (sin contar vencimientos sin aplicar).
+    pub fn pendiente(env: Env, id: u32, aportante: Address) -> i128 {
+        let p = cargar(&env, id);
+        let mut pos = cargar_posicion(&env, id, &aportante);
+        asentar(&p, &mut pos);
+        pos.pendiente
+    }
+
     pub fn ya_voto(env: Env, id: u32, aportante: Address) -> bool {
         let p = cargar(&env, id);
         env.storage()
@@ -485,8 +554,8 @@ fn aplicar_vencimientos(env: &Env, id: u32, p: &mut Proyecto) -> bool {
 
     // Venció el plazo sin llegar a la meta: todo lo recaudado es reembolsable.
     if p.estado == Estado::Abierto && ahora > p.plazo {
-        p.estado = Estado::Fallido;
-        p.fondo_reembolso = p.recaudado;
+        let fondo = p.recaudado;
+        fallar(env, p, fondo);
         env.events()
             .publish((symbol_short!("vencido"), id), p.fondo_reembolso);
         return true;
@@ -496,14 +565,61 @@ fn aplicar_vencimientos(env: &Env, id: u32, p: &mut Proyecto) -> bool {
     if p.estado == Estado::Financiado && p.hito_actual > 0 {
         let anterior = p.hitos.get(p.hito_actual - 1).unwrap();
         if anterior.evidencia.len() == 0 && ahora > anterior.fecha_limite {
-            p.estado = Estado::Fallido;
-            p.fondo_reembolso = p.recaudado - p.liberado;
+            let fondo = p.recaudado - p.liberado;
+            fallar(env, p, fondo);
             env.events()
                 .publish((symbol_short!("vencido"), id), p.fondo_reembolso);
             return true;
         }
     }
     false
+}
+
+/// Pasa el proyecto a Fallido y reparte `fondo` (lo no liberado) como reembolso.
+/// Se llama una sola vez: después el estado ya no es Abierto ni Financiado.
+fn fallar(_env: &Env, p: &mut Proyecto, fondo: i128) {
+    p.estado = Estado::Fallido;
+    p.fondo_reembolso = fondo;
+    repartir(p, fondo);
+}
+
+/// Suma `monto` al reparto acumulado. Redondea hacia abajo: nunca se reparte de más.
+fn repartir(p: &mut Proyecto, monto: i128) {
+    if monto > 0 && p.recaudado > 0 {
+        let por_unidad = monto.checked_mul(PRECISION).expect("overflow") / p.recaudado;
+        p.acumulado = p.acumulado.checked_add(por_unidad).expect("overflow");
+    }
+}
+
+/// Le suma al aportante lo ganado desde su último `checkpoint`. Las unidades enteras
+/// van a `pendiente` y la fracción queda en `resto` para la próxima vez.
+fn asentar(p: &Proyecto, pos: &mut Posicion) {
+    let delta = p.acumulado - pos.checkpoint;
+    if delta > 0 && pos.participacion > 0 {
+        let escalado = pos
+            .participacion
+            .checked_mul(delta)
+            .and_then(|g| g.checked_add(pos.resto))
+            .expect("overflow");
+        pos.pendiente = pos.pendiente.checked_add(escalado / PRECISION).expect("overflow");
+        pos.resto = escalado % PRECISION;
+    }
+    pos.checkpoint = p.acumulado;
+}
+
+fn cargar_posicion(env: &Env, id: u32, aportante: &Address) -> Posicion {
+    env.storage()
+        .persistent()
+        .get(&Clave::Posicion(id, aportante.clone()))
+        .unwrap_or(Posicion { participacion: 0, checkpoint: 0, pendiente: 0, resto: 0 })
+}
+
+fn guardar_posicion(env: &Env, id: u32, aportante: &Address, pos: &Posicion) {
+    let clave = Clave::Posicion(id, aportante.clone());
+    env.storage().persistent().set(&clave, pos);
+    env.storage()
+        .persistent()
+        .extend_ttl(&clave, TTL_MINIMO, TTL_MAXIMO);
 }
 
 fn cargar(env: &Env, id: u32) -> Proyecto {
@@ -522,10 +638,7 @@ fn guardar(env: &Env, id: u32, p: &Proyecto) {
 }
 
 fn participacion_de(env: &Env, id: u32, aportante: &Address) -> i128 {
-    env.storage()
-        .persistent()
-        .get(&Clave::Participacion(id, aportante.clone()))
-        .unwrap_or(0)
+    cargar_posicion(env, id, aportante).participacion
 }
 
 fn cliente_token(env: &Env) -> token::Client<'_> {

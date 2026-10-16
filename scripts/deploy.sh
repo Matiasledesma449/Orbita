@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Despliega Órbita en testnet y corre una demo completa:
-# crear → aportar → votar → liberar etapa 1 → cargar evidencia → votar → liberar etapa 2.
+# crear → aportar → votar → liberar etapa 1 → cargar evidencia → votar → liberar etapa 2
+# → el dueño devuelve el préstamo → cada aportante cobra su parte.
 # Requiere: stellar CLI y rustup target add wasm32v1-none
 set -euo pipefail
 
@@ -72,7 +73,14 @@ log "== 8. Etapa 2: Ana vota liberar la plata y el dueño cobra =="
 invocar ana votar --id 0 --aportante "$ANA" --aprobar true
 invocar dueno liberar --id 0
 
-log "== 9. Estado final =="
+log "== 9. El dueño devuelve el préstamo: paga 110 XLM (60 + 40 + 10 %) al contrato =="
+invocar dueno pagar_retorno --id 0 --pagador "$DUENO" --monto 1100000000
+
+log "== 10. Cada uno cobra su parte: Ana 77 XLM (70 %) y Beto 33 XLM (30 %) =="
+invocar ana cobrar --id 0 --aportante "$ANA"
+invocar beto cobrar --id 0 --aportante "$BETO"
+
+log "== 11. Estado final =="
 invocar dueno proyecto --id 0
 ORBITA_DESPUES=$(saldo_orbita)
 log "Comisión cobrada por Órbita: $(( ORBITA_DESPUES - ORBITA_ANTES )) stroops (1 XLM = 10.000.000)"

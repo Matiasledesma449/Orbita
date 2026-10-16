@@ -13,7 +13,7 @@ const ERRORES = {
   4: "El proyecto ya no recibe aportes.", 5: "El plazo para aportar venció.", 6: "Ese aporte supera la meta.",
   7: "El proyecto todavía no está financiado.", 8: "No tenés participación en este proyecto.",
   9: "Ya votaste esta etapa.", 10: "La etapa todavía no tiene mayoría a favor.",
-  11: "Este proyecto no está en reembolso.", 12: "El plazo tiene que ser futuro.",
+  11: "Todavía no tenés nada para cobrar.", 12: "El plazo tiene que ser futuro.",
   13: "Revisá los textos: falta el título o alguno es demasiado largo.", 14: "Esa etapa todavía no se liberó.",
   15: "El dueño todavía no cargó la evidencia de la etapa anterior.", 16: "La evidencia de esa etapa ya estaba cargada.",
   17: "Revisá las fechas: tienen que ser posteriores al plazo y crecientes.",

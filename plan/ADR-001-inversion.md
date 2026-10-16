@@ -58,7 +58,7 @@ Con esto, el reembolso deja de "poner en cero" la participación. Se reparte com
 | `minimo_retorno: i128` | lo que el dueño se compromete a devolver o producir por esa etapa |
 | `fecha_limite: u64` | fecha (timestamp) para cargar la evidencia de esa etapa. **Solo para la evidencia** (ver la corrección de la decisión 1) |
 
-**Por aportante** (persistent): `Posicion(id, direccion) → { participacion, checkpoint, pendiente }`. Reemplaza a la clave `Participacion` de T1.
+**Por aportante** (persistent): `Posicion(id, direccion) → { participacion, checkpoint, pendiente, resto }`. Reemplaza a la clave `Participacion` de T1.
 
 **Historial de pagos** (persistent, una entrada por pago): `Pago(id, n) → { monto, fecha }`. Cada pago es una entrada propia, así el proyecto no crece sin límite.
 
@@ -106,7 +106,7 @@ En Stellar, un contrato no "despierta" solo cuando pasa una fecha: el cambio se 
 - **Retornos y reembolsos:** se asienta antes de cualquier cambio de participación y `cobrar` deja `pendiente = 0` **antes** de transferir. Al vender, lo ganado hasta ese momento queda con el vendedor y el comprador arranca con `checkpoint = acumulado`. Nadie puede cobrar dos veces el mismo peso.
 - **Reembolso por falla:** se reparte una sola vez, en el momento de pasar a `Fallido` (el cambio de estado ocurre una sola vez).
 - **Comisión:** se calcula dentro de `liberar`, una vez por etapa.
-- **Redondeo:** la división siempre redondea hacia abajo. El "polvo" que sobra queda en el contrato; nunca se reparte de más.
+- **Redondeo:** la división siempre redondea hacia abajo, así que nunca se reparte de más. *(Agregado en I4)* Cada posición guarda además un `resto` con la fracción de unidad todavía no cobrada. Así el redondeo no se pierde en cada cobro y el "polvo" que queda en el contrato es, como mucho, menos de 1 stroop por aportante, sin importar cuántas veces cobre.
 
 ### Compra atómica (regla 5)
 
@@ -131,7 +131,7 @@ En `liberar`: `comision = monto × 200 / 10_000`. Se transfiere `monto − comis
 - Montos: se rechazan los negativos y los cero. Las cuentas usan `checked_*` y el release ya tiene `overflow-checks`. Con `PRECISION = 10^12`, `participacion ≤ total` acota el producto (≈ 10^28 para metas enormes), lejos del límite de `i128` (≈ 1,7 × 10^38).
 - El token se fija en el constructor (no es un parámetro que cualquiera pueda cambiar).
 - Las listas tienen límite: hasta 10 etapas y 20 ofertas abiertas. El historial de pagos usa una entrada por pago, sin recorrer listas.
-- Errores nuevos con códigos 17 en adelante. Nunca se renumeran los que ya existen.
+- Errores nuevos con códigos 17 en adelante. Nunca se renumeran los que ya existen. *(I4)* El #11 mantiene su número, pero pasa a llamarse `NadaParaCobrar`: con `cobrar` significa "todavía no hay nada para cobrar".
 - Eventos para cada cambio auditable: `comision`, `pago`, `cobro`, `oferta`, `compra`, `vencido`, `incumplido`.
 - Las fechas límite se guardan en el valor y se comparan con `env.ledger().timestamp()`, nunca con el TTL (security.md §8).
 
