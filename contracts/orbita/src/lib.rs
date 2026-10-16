@@ -87,7 +87,7 @@ pub struct Hito {
     pub monto: i128,
     /// Lo que el dueño se compromete a devolver o producir por esta etapa.
     pub minimo_retorno: i128,
-    /// Fecha (timestamp) para cargar la evidencia y pagar el mínimo de esta etapa.
+    /// Fecha (timestamp) para cargar la evidencia de esta etapa.
     pub fecha_limite: u64,
     pub evidencia: String,
     pub a_favor: i128,
@@ -104,6 +104,8 @@ pub struct Proyecto {
     pub imagen: String,
     pub tipo_retorno: TipoRetorno,
     pub condiciones: String,
+    /// Fecha única para haber devuelto la suma de los mínimos de las etapas liberadas.
+    pub fecha_devolucion: u64,
     pub meta: i128,
     pub recaudado: i128,
     pub liberado: i128,
@@ -140,8 +142,9 @@ impl Orbita {
 
     /// Publica un proyecto. La meta es la suma de los montos de los hitos.
     /// `imagen` es una URL (puede ir vacía). Por cada hito, `minimos` es lo que el dueño
-    /// se compromete a devolver o producir y `fechas` la fecha límite (crecientes y
-    /// posteriores a `plazo`).
+    /// se compromete a devolver o producir y `fechas` la fecha límite para la evidencia
+    /// (crecientes y posteriores a `plazo`). `fecha_devolucion` tiene que ser posterior a
+    /// la última fecha.
     pub fn crear_proyecto(
         env: Env,
         dueno: Address,
@@ -155,6 +158,7 @@ impl Orbita {
         montos: Vec<i128>,
         minimos: Vec<i128>,
         fechas: Vec<u64>,
+        fecha_devolucion: u64,
     ) -> u32 {
         dueno.require_auth();
 
@@ -193,6 +197,9 @@ impl Orbita {
                 panic_with_error!(&env, Error::FechasInvalidas);
             }
             fecha_anterior = fecha_limite;
+            if i == hitos.len() - 1 && fecha_devolucion <= fecha_limite {
+                panic_with_error!(&env, Error::FechasInvalidas);
+            }
             meta += monto;
             let descripcion_hito = hitos.get(i).unwrap();
             if descripcion_hito.len() == 0 || descripcion_hito.len() > MAX_HITO {
@@ -218,6 +225,7 @@ impl Orbita {
             imagen,
             tipo_retorno,
             condiciones,
+            fecha_devolucion,
             meta,
             recaudado: 0,
             liberado: 0,

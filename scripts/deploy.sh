@@ -40,19 +40,21 @@ invocar() { # $1 = cuenta firmante, resto = funcion y argumentos
 log "== 4. Demo: préstamo al 10 % en 2 etapas (60 + 40 XLM) =="
 DIA=$(( 24 * 3600 ))
 PLAZO=$(( $(date +%s) + 30 * DIA ))        # para juntar la plata
-FECHA1=$(( PLAZO + 30 * DIA ))             # etapa 1: evidencia y pago del mínimo
-FECHA2=$(( PLAZO + 60 * DIA ))             # etapa 2
+FECHA1=$(( PLAZO + 30 * DIA ))             # etapa 1: fecha límite para la evidencia
+FECHA2=$(( PLAZO + 60 * DIA ))             # etapa 2: fecha límite para la evidencia
+DEVOLUCION=$(( $(date +%s) + 180 * DIA ))  # para esta fecha, devolver la suma de los mínimos
 invocar dueno crear_proyecto --dueno "$DUENO" \
   --titulo "Huerta comunitaria Barrio Esperanza" \
   --descripcion "Huerta para 40 familias del barrio: semillas, herramientas y riego por goteo." \
   --imagen "https://raw.githubusercontent.com/Matiasledesma449/Orbita/v2/docs/img/huerta.svg" \
   --tipo_retorno 0 \
-  --condiciones "Préstamo al 10 %: devolvemos 66 XLM al terminar la etapa 1 y 44 XLM al terminar la etapa 2." \
+  --condiciones "Préstamo al 10 %: devolvemos 110 XLM (66 por la etapa 1 y 44 por la etapa 2) antes de la fecha de devolución, a 180 días." \
   --plazo "$PLAZO" \
   --hitos '["Compra de semillas y herramientas","Sistema de riego por goteo"]' \
   --montos '["600000000","400000000"]' \
   --minimos '["660000000","440000000"]' \
-  --fechas "[$FECHA1,$FECHA2]"
+  --fechas "[$FECHA1,$FECHA2]" \
+  --fecha_devolucion "$DEVOLUCION"
 
 log "== 5. Aportes (Ana 70 XLM, Beto 30 XLM) =="
 invocar ana aportar --id 0 --aportante "$ANA" --monto 700000000

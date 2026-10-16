@@ -56,3 +56,33 @@ https://stellar.expert/explorer/testnet/contract/CD5GH4WGER5GBXZS4OIBP3DGEHH5J66
 - `scripts/deploy.sh` publica la demo como un préstamo al 10 %, con mínimos de 66 y 44 XLM y fechas a 60 y 90 días.
 - `docs/app.js`: lo mínimo para que no se rompa. Mientras el formulario no pida estos datos (T4), los proyectos creados desde la web se publican como tipo "Producto", con mínimo 0, una fecha cada 30 días y un texto de condiciones provisorio. También se agregó el mensaje del error #17.
 - En la rama v2, `docs/config.js` apunta al contrato nuevo.
+
+---
+
+## Corrección I2b — Fecha de devolución única ✅
+
+Con una sola fecha por etapa, el dueño tendría que devolver el mínimo antes de recibir la etapa siguiente, y eso no es realista. Por eso corregimos la decisión 1 del ADR:
+- La `fecha_limite` de cada etapa queda **solo para la evidencia**.
+- El proyecto suma una **`fecha_devolucion`** única, posterior a la última fecha de etapa. Para esa fecha, el dueño tiene que haber pagado la suma de los mínimos de las etapas liberadas. El control de "incumplido" llega en I5.
+- Para el tipo "Producto", el incumplido depende solo de la evidencia.
+
+**Tests:** 21/21. Los 2 nuevos comprueban que la devolución tiene que ser posterior a la última etapa (error #17) y que se acepta cualquier fecha posterior.
+
+**CONTRACT_ID nuevo:** `CBW5OUVKDL3TLXEUGXMGAUQZ5PJ4ESDLOIZYEWLCUJCEEB4PSJMMIKLR`
+https://stellar.expert/explorer/testnet/contract/CBW5OUVKDL3TLXEUGXMGAUQZ5PJ4ESDLOIZYEWLCUJCEEB4PSJMMIKLR
+
+| Paso | Hash |
+|---|---|
+| Desplegar | [f29142d8…](https://stellar.expert/explorer/testnet/tx/f29142d80b8463b9a2b11a67763adfff12e05d14a0980b7f969fa3e417c8badb) |
+| **Crear proyecto con fecha de devolución a 180 días** | [96554608…](https://stellar.expert/explorer/testnet/tx/96554608d2812c1d7d87b4bb74f25e5dde39a689009363d69709e90664d9c8ac) |
+| Aportar: Ana | [8673c814…](https://stellar.expert/explorer/testnet/tx/8673c814b41604ef3a899994df6f3f6f5ea5ac2ed539099cf01379d8a6d677fb) |
+| Aportar: Beto | [7a194e04…](https://stellar.expert/explorer/testnet/tx/7a194e044d47eab86618aeb96ad32c71162b4ffe5ed3e77af63608d12afb05cd) |
+| Votar etapa 1 | [8301a90a…](https://stellar.expert/explorer/testnet/tx/8301a90ab962a6e90075819f308251cade289971803291c9a7ff0dbfa57a6448) |
+| Liberar etapa 1 | [65b8f3b0…](https://stellar.expert/explorer/testnet/tx/65b8f3b035f3c42a19018f0481621e1f79ca5f0977e56b0f01847c6a1b393553) |
+| Cargar evidencia de la etapa 1 | [9c75214d…](https://stellar.expert/explorer/testnet/tx/9c75214d2e98a93584a07ed11b111c9a2f71678b08fbae5bdb9504b321600bc6) |
+| Votar etapa 2 | [e7c5b2fa…](https://stellar.expert/explorer/testnet/tx/e7c5b2fad0f39a5bc1260c363e7f23bd62fea7accbda7078cb88d0e7a5dfb0b8) |
+| Liberar etapa 2 | [3dec5939…](https://stellar.expert/explorer/testnet/tx/3dec59390105784f0a6657376935d9b546c2ba5e20f52ff906fe13151a87f7a6) |
+
+**Lo que quedó guardado:** evidencia de la etapa 1 hasta el 15/12/2026, evidencia de la etapa 2 hasta el 14/01/2027 y **devolución de 110 XLM hasta el 14/04/2027**.
+
+**Otros cambios:** `deploy.sh` (devolución a 180 días), `app.js` (mientras el formulario no la pida, propone devolver 90 días después de la última etapa) y el ADR-001 (decisión 1 corregida).

@@ -243,7 +243,8 @@ $("formCrear").onsubmit = (ev) => {
     sv.vec(filas.map((r) => sv.str(r.querySelector(".desc").value.trim()))),
     sv.vec(filas.map((r) => sv.i128(aUnidades(r.querySelector(".monto").value)))),
     sv.vec(filas.map(() => sv.i128(0))), // mínimo comprometido: se pide en T4
-    sv.vec(filas.map((_, i) => sv.u64(plazo + (i + 1) * 30 * 86400))), // una fecha cada 30 días
+    sv.vec(filas.map((_, i) => sv.u64(plazo + (i + 1) * 30 * 86400))), // evidencia: una fecha cada 30 días
+    sv.u64(plazo + (filas.length + 3) * 30 * 86400), // devolución: 90 días después de la última etapa (se pide en T4)
   ), "¡Proyecto publicado en Stellar!").then(() => f.reset());
 };
 

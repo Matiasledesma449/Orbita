@@ -47,7 +47,8 @@ Con esto, el reembolso deja de "poner en cero" la participación. Se reparte com
 | `acumulado: i128` | reparto acumulado por unidad × 10^12 |
 | `total_pagado: i128` | suma de todo lo que pagó el dueño como retorno |
 | `cantidad_pagos: u32` | cuántos pagos hay en el historial |
-| `incumplido: bool` | se marca si vence una fecha sin el pago comprometido |
+| `fecha_devolucion: u64` | fecha única para devolver: posterior a la fecha límite de la última etapa |
+| `incumplido: bool` | se marca si llega la `fecha_devolucion` sin el pago comprometido (o, en "Producto", si vence una etapa sin evidencia) |
 | `vendedores: Vec<Address>` | quiénes tienen una oferta de venta abierta (máximo 20) |
 
 **`Hito`** (dentro del proyecto). Campos nuevos:
@@ -55,7 +56,7 @@ Con esto, el reembolso deja de "poner en cero" la participación. Se reparte com
 | Campo | Para qué |
 |---|---|
 | `minimo_retorno: i128` | lo que el dueño se compromete a devolver o producir por esa etapa |
-| `fecha_limite: u64` | fecha (timestamp) para cargar la evidencia **y** pagar ese mínimo |
+| `fecha_limite: u64` | fecha (timestamp) para cargar la evidencia de esa etapa. **Solo para la evidencia** (ver la corrección de la decisión 1) |
 
 **Por aportante** (persistent): `Posicion(id, direccion) → { participacion, checkpoint, pendiente }`. Reemplaza a la clave `Participacion` de T1.
 
@@ -70,7 +71,7 @@ Con esto, el reembolso deja de "poner en cero" la participación. Se reparte com
 | Función | Quién | Qué hace |
 |---|---|---|
 | `__constructor(token, plataforma)` | al desplegar | guarda el token y la dirección de la plataforma |
-| `crear_proyecto(dueno, titulo, descripcion, imagen, tipo_retorno, condiciones, plazo, hitos, montos, minimos, fechas)` | dueño | igual que T1 más los datos de inversión. Valida: largos iguales, mínimos ≥ 0 y fechas crecientes y posteriores al `plazo` |
+| `crear_proyecto(dueno, titulo, descripcion, imagen, tipo_retorno, condiciones, plazo, hitos, montos, minimos, fechas, fecha_devolucion)` | dueño | igual que T1 más los datos de inversión. Valida: largos iguales, mínimos ≥ 0, fechas crecientes y posteriores al `plazo`, y `fecha_devolucion` posterior a la última fecha |
 | `aportar` | aportante | igual que hoy; asienta al aportante antes de sumarle participación |
 | `votar` | aportante | igual que T1, más el bloqueo de venta (ver abajo) |
 | `liberar(id)` | dueño | transfiere el 98 % al dueño y el 2 % a `Plataforma` |
@@ -90,7 +91,7 @@ En Stellar, un contrato no "despierta" solo cuando pasa una fecha: el cambio se 
 
 1. **Abierto y venció el plazo sin llegar a la meta** → `Fallido`, y todo lo recaudado se reparte en `acumulado` (reembolso completo).
 2. **Regla 2 (etapa vencida sin evidencia):** si la última etapa liberada pasó su `fecha_limite` y no tiene evidencia → `Fallido`, y lo que queda en el contrato (`recaudado − liberado`) se reparte en `acumulado`. Cada aportante lo retira con `cobrar`, sin votar.
-3. **Regla 4 (incumplido):** si pasó la `fecha_limite` de alguna etapa ya liberada y `total_pagado` es menor que la suma de los `minimo_retorno` de las etapas vencidas → `incumplido = true`. Queda marcado para siempre, aunque después pague. El historial muestra cuándo se puso al día.
+3. **Regla 4 (incumplido):** si pasó la `fecha_devolucion` y `total_pagado` es menor que la suma de los `minimo_retorno` de las etapas **liberadas** → `incumplido = true`. Para el tipo "Producto", en cambio, se marca si una etapa liberada vence sin evidencia. Queda marcado para siempre, aunque después pague. El historial muestra cuándo se puso al día.
 
 ### Cómo se evita el doble voto
 
@@ -138,7 +139,10 @@ En `liberar`: `comision = monto × 200 / 10_000`. Se transfiere `monto − comis
 
 Aprobadas por el usuario el 16/10/2026:
 
-1. **Una sola fecha por etapa** (`fecha_limite`), que vale para cargar la evidencia y para pagar el mínimo comprometido.
+1. ~~Una sola fecha por etapa, que vale para la evidencia y para el pago.~~ **Corregida por el usuario el 16/10/2026:** con una sola fecha, el dueño tendría que devolver el mínimo antes de recibir la etapa siguiente, y eso no es realista. Nuevo diseño:
+   - Cada etapa mantiene su `fecha_limite`, pero **solo para la evidencia**. Si vence sin evidencia se habilita el retiro (regla 2).
+   - El proyecto suma una **`fecha_devolucion` única**, posterior a la fecha límite de la última etapa. Para esa fecha, el dueño tiene que haber pagado la suma de los mínimos comprometidos de las etapas liberadas. Si no, queda "incumplido".
+   - Para el tipo "Producto", el incumplido sigue dependiendo solo de la evidencia.
 2. **Tipo "Producto":** el incumplimiento depende solo de la evidencia, no de pagos.
 3. **La comisión del 2 % se descuenta** del monto de la etapa: el dueño recibe el 98 %.
 4. **Se compra la oferta entera.** No hay compras parciales por ahora.

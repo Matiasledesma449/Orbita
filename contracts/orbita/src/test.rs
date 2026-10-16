@@ -55,6 +55,7 @@ fn crear(e: &Escenario) -> u32 {
         &vec![&e.env, 600i128, 400i128],
         &vec![&e.env, 660i128, 440i128],
         &vec![&e.env, 5_000u64, 9_000u64],
+        &20_000u64,
     )
 }
 
@@ -253,6 +254,7 @@ fn no_crea_proyecto_sin_titulo() {
         &vec![&e.env, 100i128],
         &vec![&e.env, 0i128],
         &vec![&e.env, 2_000u64],
+        &3_000u64,
     );
 }
 
@@ -279,6 +281,17 @@ fn crear_con(
     minimos: soroban_sdk::Vec<i128>,
     fechas: soroban_sdk::Vec<u64>,
 ) -> u32 {
+    crear_con_devolucion(e, condiciones, montos, minimos, fechas, 20_000)
+}
+
+fn crear_con_devolucion(
+    e: &Escenario,
+    condiciones: &str,
+    montos: soroban_sdk::Vec<i128>,
+    minimos: soroban_sdk::Vec<i128>,
+    fechas: soroban_sdk::Vec<u64>,
+    fecha_devolucion: u64,
+) -> u32 {
     let mut hitos = soroban_sdk::Vec::new(&e.env);
     for _ in 0..montos.len() {
         hitos.push_back(String::from_str(&e.env, "Etapa"));
@@ -295,6 +308,7 @@ fn crear_con(
         &montos,
         &minimos,
         &fechas,
+        &fecha_devolucion,
     )
 }
 
@@ -312,6 +326,7 @@ fn guarda_datos_de_inversion() {
     let h1 = p.hitos.get(1).unwrap();
     assert_eq!((h0.minimo_retorno, h0.fecha_limite), (660, 5_000));
     assert_eq!((h1.minimo_retorno, h1.fecha_limite), (440, 9_000));
+    assert_eq!(p.fecha_devolucion, 20_000);
 }
 
 #[test]
@@ -347,4 +362,18 @@ fn minimo_no_negativo() {
 fn condiciones_obligatorias() {
     let e = escenario();
     crear_con(&e, "", vec![&e.env, 600], vec![&e.env, 0], vec![&e.env, 5_000]);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #17)")]
+fn devolucion_posterior_a_la_ultima_etapa() {
+    let e = escenario();
+    crear_con_devolucion(&e, "10 % de ventas", vec![&e.env, 600, 400], vec![&e.env, 0, 0], vec![&e.env, 5_000, 9_000], 9_000);
+}
+
+#[test]
+fn devolucion_puede_ser_cualquier_fecha_posterior() {
+    let e = escenario();
+    let id = crear_con_devolucion(&e, "10 % de ventas", vec![&e.env, 600, 400], vec![&e.env, 0, 0], vec![&e.env, 5_000, 9_000], 9_001);
+    assert_eq!(e.contrato.proyecto(&id).fecha_devolucion, 9_001);
 }

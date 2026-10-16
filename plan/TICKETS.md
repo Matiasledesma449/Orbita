@@ -108,6 +108,8 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 
 **Evidencia (16/10/2026)**: 19/19 tests. Contrato [`CD5GH4WG…`](https://stellar.expert/explorer/testnet/contract/CD5GH4WGER5GBXZS4OIBP3DGEHH5J667G54AWFIR4352SWYRMQMSR6FS). `crear_proyecto` con préstamo al 10 %: [`ccb35b73…`](https://stellar.expert/explorer/testnet/tx/ccb35b73adea7ae88ef8aaf51bcc1c0ffdf61ecb31f3a6615d1e3622d8291abf). Detalle en `plan/RESUMEN-I2.md`.
 
+**Corrección I2b (16/10/2026)**: la fecha de cada etapa queda solo para la evidencia y se suma una `fecha_devolucion` única (ver ADR-001, decisión 1). 21/21 tests. Contrato [`CBW5OUVK…`](https://stellar.expert/explorer/testnet/contract/CBW5OUVKDL3TLXEUGXMGAUQZ5PJ4ESDLOIZYEWLCUJCEEB4PSJMMIKLR). `crear_proyecto` con devolución a 180 días: [`96554608…`](https://stellar.expert/explorer/testnet/tx/96554608d2812c1d7d87b4bb74f25e5dde39a689009363d69709e90664d9c8ac).
+
 ---
 
 ## I3. Etapa vencida sin evidencia → retiro sin votar ⬜ (1 h)
@@ -158,7 +160,7 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 
 **Qué cambia**
 - Cada `pagar_retorno` guarda `Pago(id, n) = { monto, fecha }`. Lectura `pago(id, n)`.
-- `aplicar_vencimientos` marca `incumplido = true` si a una fecha vencida no se llegó a la suma de mínimos comprometidos (evento `incumplido`). Para el tipo "Producto" solo cuenta la evidencia (a confirmar en el ADR).
+- `aplicar_vencimientos` marca `incumplido = true` si pasó la `fecha_devolucion` y el dueño no pagó la suma de los mínimos de las etapas liberadas (evento `incumplido`). Para el tipo "Producto", se marca si una etapa liberada vence sin evidencia.
 
 **Test**
 - Pagando a tiempo, no se marca. Sin pagar y pasada la fecha, `revisar` lo marca. Si paga tarde, la marca sigue.
