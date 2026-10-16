@@ -96,11 +96,13 @@ async function accion(boton, fn, okTexto) {
 // ---------- billetera ----------
 async function conectar() {
   if (!F) return aviso("No encontramos Freighter. Instalalo desde freighter.app y elegí la red Testnet.", 7000);
-  const conectado = await F.isConnected();
-  if (conectado?.isConnected === false || conectado === false) return aviso("Abrí la extensión Freighter y volvé a intentar.");
-  const r = await F.requestAccess();
-  if (r?.error) return aviso(r.error.message || String(r.error));
-  cuenta = typeof r === "string" ? r : r.address;
+  let r;
+  try { r = await F.requestAccess(); }
+  catch (e) { console.error(e); return aviso(`No se pudo conectar con Freighter: ${e?.message || e}`, 7000); }
+  if (r?.error) return aviso(r.error.message || String(r.error), 7000);
+  const direccion = typeof r === "string" ? r : r?.address;
+  if (!direccion) return aviso("Freighter no devolvió ninguna cuenta. Abrí la extensión, desbloqueala y volvé a intentar.", 7000);
+  cuenta = direccion;
   $("cuenta").textContent = corto(cuenta);
   $("btnConectar").textContent = "Conectado";
   $("btnFondear").hidden = false;
