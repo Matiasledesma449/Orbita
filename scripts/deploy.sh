@@ -54,4 +54,4 @@ invocar dueno proyecto --id 0
 
 log ""
 log "Listo. Contrato: https://stellar.expert/explorer/testnet/contract/$CONTRATO"
-log "Copiá CONTRACT_ID en frontend/config.js y en el README. Los hashes de cada transacción están en $LOG y en la pestaña de historial del explorador."
+log "Copiá CONTRACT_ID en docs/config.js y en el README. Los hashes de cada transacción están en $LOG y en la pestaña de historial del explorador."
