@@ -596,6 +596,61 @@
               "key": {
                 "vec": [
                   {
+                    "symbol": "Pago"
+                  },
+                  {
+                    "u32": 0
+                  },
+                  {
+                    "u32": 0
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "map": [
+                  {
+                    "key": {
+                      "symbol": "fecha"
+                    },
+                    "val": {
+                      "u64": "0"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "monto"
+                    },
+                    "val": {
+                      "i128": "66"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "pagador"
+                    },
+                    "val": {
+                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 2073600
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4",
+              "key": {
+                "vec": [
+                  {
                     "symbol": "Posicion"
                   },
                   {
@@ -738,6 +793,14 @@
                     },
                     "val": {
                       "i128": "466000000000"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "cantidad_pagos"
+                    },
+                    "val": {
+                      "u32": 1
                     }
                   },
                   {
@@ -947,6 +1010,14 @@
                     },
                     "val": {
                       "string": "https://ejemplo.org/huerta.jpg"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "incumplido"
+                    },
+                    "val": {
+                      "bool": false
                     }
                   },
                   {

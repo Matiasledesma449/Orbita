@@ -56,6 +56,7 @@ pub enum Error {
     EvidenciaYaCargada = 16,
     FechasInvalidas = 17,
     EtapaVencida = 18,
+    PagoNoExiste = 19,
 }
 
 #[contracttype]
@@ -127,6 +128,20 @@ pub struct Proyecto {
     pub acumulado: i128,
     /// Todo lo que pagó el dueño como retorno.
     pub total_pagado: i128,
+    /// Cuántos pagos hay en el historial (`pago(id, n)` con n de 0 a cantidad_pagos - 1).
+    pub cantidad_pagos: u32,
+    /// El dueño no cumplió lo prometido a tiempo. Queda marcado para siempre.
+    pub incumplido: bool,
+}
+
+/// Un pago del historial público.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Pago {
+    pub pagador: Address,
+    pub monto: i128,
+    /// Fecha (timestamp) del pago.
+    pub fecha: u64,
 }
 
 /// Lo que tiene cada aportante en un proyecto.
@@ -152,6 +167,7 @@ pub enum Clave {
     Proyecto(u32),
     Posicion(u32, Address),
     Voto(u32, u32, Address),
+    Pago(u32, u32),
 }
 
 #[contract]
@@ -263,6 +279,8 @@ impl Orbita {
             fondo_reembolso: 0,
             acumulado: 0,
             total_pagado: 0,
+            cantidad_pagos: 0,
+            incumplido: false,
         };
         guardar(&env, id, &proyecto);
         env.storage().instance().set(&Clave::Cantidad, &(id + 1));
@@ -455,6 +473,15 @@ impl Orbita {
         cliente_token(&env).transfer(&pagador, &env.current_contract_address(), &monto);
         repartir(&mut p, monto);
         p.total_pagado = p.total_pagado.checked_add(monto).expect("overflow");
+
+        // Historial público: una entrada por pago.
+        let clave = Clave::Pago(id, p.cantidad_pagos);
+        let pago = Pago { pagador: pagador.clone(), monto, fecha: env.ledger().timestamp() };
+        env.storage().persistent().set(&clave, &pago);
+        env.storage()
+            .persistent()
+            .extend_ttl(&clave, TTL_MINIMO, TTL_MAXIMO);
+        p.cantidad_pagos += 1;
         guardar(&env, id, &p);
 
         env.events()
@@ -519,6 +546,19 @@ impl Orbita {
         participacion_de(&env, id, &aportante)
     }
 
+    /// Un pago del historial (n empieza en 0).
+    pub fn pago(env: Env, id: u32, n: u32) -> Pago {
+        env.storage()
+            .persistent()
+            .get(&Clave::Pago(id, n))
+            .unwrap_or_else(|| panic_with_error!(&env, Error::PagoNoExiste))
+    }
+
+    /// Lo prometido hasta ahora: la suma de los mínimos de las etapas liberadas.
+    pub fn prometido(env: Env, id: u32) -> i128 {
+        prometido_de(&cargar(&env, id))
+    }
+
     pub fn posicion(env: Env, id: u32, aportante: Address) -> Posicion {
         cargar_posicion(&env, id, &aportante)
     }
@@ -551,6 +591,7 @@ impl Orbita {
 /// solo: se aplican en la próxima transacción que toca el proyecto. Devuelve si cambió.
 fn aplicar_vencimientos(env: &Env, id: u32, p: &mut Proyecto) -> bool {
     let ahora = env.ledger().timestamp();
+    let mut cambio = false;
 
     // Venció el plazo sin llegar a la meta: todo lo recaudado es reembolsable.
     if p.estado == Estado::Abierto && ahora > p.plazo {
@@ -558,7 +599,7 @@ fn aplicar_vencimientos(env: &Env, id: u32, p: &mut Proyecto) -> bool {
         fallar(env, p, fondo);
         env.events()
             .publish((symbol_short!("vencido"), id), p.fondo_reembolso);
-        return true;
+        cambio = true;
     }
 
     // La última etapa liberada venció sin evidencia: lo que queda es reembolsable.
@@ -569,10 +610,45 @@ fn aplicar_vencimientos(env: &Env, id: u32, p: &mut Proyecto) -> bool {
             fallar(env, p, fondo);
             env.events()
                 .publish((symbol_short!("vencido"), id), p.fondo_reembolso);
-            return true;
+            cambio = true;
         }
     }
-    false
+
+    // Incumplido (ADR-001, decisión 1 corregida).
+    if !p.incumplido {
+        let incumple = if p.tipo_retorno == TipoRetorno::Producto {
+            // Producto: alguna etapa liberada venció sin evidencia.
+            let mut sin_evidencia = false;
+            for h in p.hitos.iter() {
+                if h.liberado && h.evidencia.len() == 0 && ahora > h.fecha_limite {
+                    sin_evidencia = true;
+                }
+            }
+            sin_evidencia
+        } else {
+            // Préstamo, ventas o ganancias: llegó la fecha de devolución sin haber
+            // pagado la suma de los mínimos de las etapas liberadas.
+            ahora > p.fecha_devolucion && p.total_pagado < prometido_de(p)
+        };
+        if incumple {
+            p.incumplido = true;
+            env.events()
+                .publish((symbol_short!("incumplio"), id), (prometido_de(p), p.total_pagado));
+            cambio = true;
+        }
+    }
+    cambio
+}
+
+/// Suma de los mínimos comprometidos de las etapas ya liberadas.
+fn prometido_de(p: &Proyecto) -> i128 {
+    let mut total: i128 = 0;
+    for h in p.hitos.iter() {
+        if h.liberado {
+            total = total.checked_add(h.minimo_retorno).expect("overflow");
+        }
+    }
+    total
 }
 
 /// Pasa el proyecto a Fallido y reparte `fondo` (lo no liberado) como reembolso.

@@ -18,6 +18,7 @@ const ERRORES = {
   15: "El dueño todavía no cargó la evidencia de la etapa anterior.", 16: "La evidencia de esa etapa ya estaba cargada.",
   17: "Revisá las fechas: tienen que ser posteriores al plazo y crecientes.",
   18: "Venció la fecha para cargar la evidencia de esa etapa.",
+  19: "Ese pago no existe en el historial.",
 };
 
 let cuenta = null;

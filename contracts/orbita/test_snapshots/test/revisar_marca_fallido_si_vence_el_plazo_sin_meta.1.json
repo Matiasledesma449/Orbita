@@ -383,6 +383,14 @@
                   },
                   {
                     "key": {
+                      "symbol": "cantidad_pagos"
+                    },
+                    "val": {
+                      "u32": 0
+                    }
+                  },
+                  {
+                    "key": {
                       "symbol": "condiciones"
                     },
                     "val": {
@@ -588,6 +596,14 @@
                     },
                     "val": {
                       "string": "https://ejemplo.org/huerta.jpg"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "incumplido"
+                    },
+                    "val": {
+                      "bool": false
                     }
                   },
                   {

@@ -15,7 +15,7 @@ Estimación hecha el viernes 16/10 a las 18:20, con corte el sábado a las 6:00 
 | I2 | Datos de inversión al publicar | 1 h | ✅ hecho |
 | I3 | Etapa vencida sin evidencia → retiro sin votar | 1 h | ✅ hecho |
 | I4 | Pagos del dueño y reparto acumulado (`pagar_retorno` / `cobrar`) | 2 h | ✅ hecho |
-| I5 | Historial de pagos e "incumplido" | 1 h | sí |
+| I5 | Historial de pagos e "incumplido" | 1 h | ✅ hecho |
 | T2 | USDC de testnet como moneda | 1 h 15 | sí |
 | T4 | Web: lo de T1 + datos de inversión, pagos y cobro | 2 h 30 | ⚠️ justo (es lo último que entra) |
 | I6 | Mercado de participaciones (ofrecer / comprar) | 2 h | 🌅 después |
@@ -158,7 +158,7 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 
 ---
 
-## I5. Historial de pagos e "incumplido" ⬜ (1 h)
+## I5. Historial de pagos e "incumplido" ✅ (1 h)
 
 **Objetivo:** que cualquiera vea lo prometido contra lo pagado, y que quede marcado si el dueño no cumple.
 
@@ -173,6 +173,8 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 **Prueba en testnet**
 - Proyecto con una fecha de pago cercana. Se deja vencer sin pagar, se llama a `revisar` y queda "incumplido". Después el dueño paga y el historial lo muestra.
 - Evidencia: hashes de `revisar` (incumplido) y de `pagar_retorno`.
+
+**Evidencia (16/10/2026)**: 48/48 tests. Contrato [`CDXJK2RX…`](https://stellar.expert/explorer/testnet/contract/CDXJK2RXXPH7DNYBEOAJQVQB35MQTU4UG5TV3MU6VKGUUKFZ5XUCVPHM). `revisar` → incumplido: [`1d7be0e4…`](https://stellar.expert/explorer/testnet/tx/1d7be0e4a2e2cfb9f3700f09e477a7c83895755389c484e63f13b0364202cbbd). Pago tardío: [`ae9d9fa1…`](https://stellar.expert/explorer/testnet/tx/ae9d9fa10fcc9f8c1ad73aa5631b7c91f304f571daa6defc65d8c0b9b2faaa86) (la marca queda). Pago a tiempo en otro proyecto: [`63846944…`](https://stellar.expert/explorer/testnet/tx/638469447abe2381dd0434b6dc4dd1d25e5f7dd1d5d15b41944b8dbf2559470c) (sin marca). Detalle en `plan/RESUMEN-I5.md`.
 
 ---
 

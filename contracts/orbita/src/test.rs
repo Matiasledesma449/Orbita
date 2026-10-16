@@ -605,3 +605,150 @@ fn nunca_se_reparte_mas_de_lo_que_entra() {
     assert_eq!(pagado + 1_000 - cobrado, saldo(&e, &e.contrato.address));
     assert!(saldo(&e, &e.contrato.address) <= 2);
 }
+
+// ---------- I5: historial de pagos e incumplido ----------
+// En `crear`: evidencia hasta 5.000 y 9.000, devolución hasta 20.000,
+// mínimos 660 + 440 = 1.100 (préstamo).
+
+#[test]
+fn historial_guarda_cada_pago_con_su_fecha() {
+    let e = escenario();
+    let id = completado(&e);
+    darle_al_dueno(&e, 1_100);
+    adelantar_reloj(&e, 10_000);
+    e.contrato.pagar_retorno(&id, &e.dueno, &600);
+    adelantar_reloj(&e, 15_000);
+    e.contrato.pagar_retorno(&id, &e.dueno, &500);
+
+    let p = e.contrato.proyecto(&id);
+    assert_eq!(p.cantidad_pagos, 2);
+    assert_eq!(e.contrato.pago(&id, &0), Pago { pagador: e.dueno.clone(), monto: 600, fecha: 10_000 });
+    assert_eq!(e.contrato.pago(&id, &1), Pago { pagador: e.dueno.clone(), monto: 500, fecha: 15_000 });
+    assert_eq!(e.contrato.prometido(&id), 1_100);
+    assert_eq!(p.total_pagado, 1_100);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #19)")]
+fn pago_inexistente() {
+    let e = escenario();
+    let id = completado(&e);
+    e.contrato.pago(&id, &0);
+}
+
+#[test]
+fn pagando_a_tiempo_no_queda_incumplido() {
+    let e = escenario();
+    let id = completado(&e);
+    darle_al_dueno(&e, 1_100);
+    e.contrato.pagar_retorno(&id, &e.dueno, &1_100);
+    adelantar_reloj(&e, 20_001);
+    e.contrato.revisar(&id);
+    assert!(!e.contrato.proyecto(&id).incumplido);
+}
+
+#[test]
+fn antes_de_la_fecha_de_devolucion_no_queda_incumplido() {
+    let e = escenario();
+    let id = completado(&e);
+    adelantar_reloj(&e, 20_000); // justo en la fecha todavía está a tiempo
+    e.contrato.revisar(&id);
+    assert!(!e.contrato.proyecto(&id).incumplido);
+}
+
+#[test]
+fn sin_pagar_queda_incumplido_y_la_marca_sigue_aunque_pague_tarde() {
+    let e = escenario();
+    let id = completado(&e);
+    adelantar_reloj(&e, 20_001);
+    e.contrato.revisar(&id);
+    assert!(e.contrato.proyecto(&id).incumplido);
+
+    darle_al_dueno(&e, 1_100);
+    e.contrato.pagar_retorno(&id, &e.dueno, &1_100); // paga tarde
+    let p = e.contrato.proyecto(&id);
+    assert!(p.incumplido); // la marca queda
+    assert_eq!(e.contrato.pago(&id, &0).fecha, 20_001); // y el historial muestra cuándo pagó
+    assert_eq!(e.contrato.cobrar(&id, &e.ana), 770); // los aportantes igual cobran
+}
+
+#[test]
+fn pago_parcial_queda_incumplido() {
+    let e = escenario();
+    let id = completado(&e);
+    darle_al_dueno(&e, 1_099);
+    e.contrato.pagar_retorno(&id, &e.dueno, &1_099);
+    adelantar_reloj(&e, 20_001);
+    e.contrato.revisar(&id);
+    assert!(e.contrato.proyecto(&id).incumplido);
+}
+
+#[test]
+fn pagar_tarde_marca_el_incumplido_en_el_mismo_pago() {
+    // Nadie llamó a revisar: el pago tardío igual deja la marca.
+    let e = escenario();
+    let id = completado(&e);
+    darle_al_dueno(&e, 1_100);
+    adelantar_reloj(&e, 20_001);
+    e.contrato.pagar_retorno(&id, &e.dueno, &1_100);
+    assert!(e.contrato.proyecto(&id).incumplido);
+}
+
+#[test]
+fn solo_cuenta_lo_prometido_por_etapas_liberadas() {
+    // Se libera la etapa 1 y la 2 se rechaza: el dueño solo debe los 660 de la etapa 1.
+    let e = escenario();
+    let id = con_etapa_1_liberada(&e);
+    evidencia(&e, id, 0);
+    e.contrato.votar(&id, &e.ana, &false);
+    assert_eq!(e.contrato.proyecto(&id).estado, Estado::Fallido);
+    assert_eq!(e.contrato.prometido(&id), 660);
+
+    darle_al_dueno(&e, 660);
+    e.contrato.pagar_retorno(&id, &e.dueno, &660);
+    adelantar_reloj(&e, 20_001);
+    e.contrato.revisar(&id);
+    assert!(!e.contrato.proyecto(&id).incumplido);
+}
+
+/// Proyecto tipo Producto: una etapa de 1.000, evidencia hasta 5.000, devolución 20.000.
+fn producto(e: &Escenario) -> u32 {
+    let id = e.contrato.crear_proyecto(
+        &e.dueno,
+        &String::from_str(&e.env, "Cerveza artesanal"),
+        &String::from_str(&e.env, ""),
+        &String::from_str(&e.env, ""),
+        &TipoRetorno::Producto,
+        &String::from_str(&e.env, "Una caja de 12 por cada 100 aportados."),
+        &1_000u64,
+        &vec![&e.env, String::from_str(&e.env, "Primera producción")],
+        &vec![&e.env, 1_000i128],
+        &vec![&e.env, 120i128],
+        &vec![&e.env, 5_000u64],
+        &20_000u64,
+    );
+    e.contrato.aportar(&id, &e.ana, &700);
+    e.contrato.aportar(&id, &e.beto, &300);
+    e.contrato.votar(&id, &e.ana, &true);
+    e.contrato.liberar(&id);
+    id
+}
+
+#[test]
+fn producto_queda_incumplido_si_vence_sin_evidencia() {
+    let e = escenario();
+    let id = producto(&e);
+    adelantar_reloj(&e, 5_001);
+    e.contrato.revisar(&id);
+    assert!(e.contrato.proyecto(&id).incumplido);
+}
+
+#[test]
+fn producto_con_evidencia_no_depende_de_pagos() {
+    let e = escenario();
+    let id = producto(&e);
+    evidencia(&e, id, 0);
+    adelantar_reloj(&e, 20_001); // pasó la devolución sin ningún pago
+    e.contrato.revisar(&id);
+    assert!(!e.contrato.proyecto(&id).incumplido);
+}

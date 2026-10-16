@@ -3,3 +3,4 @@ deploy.log
 .stellar/
 node_modules/
 demo-vencimiento.log
+demo-incumplido.log

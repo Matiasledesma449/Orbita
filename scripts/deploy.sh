@@ -80,7 +80,13 @@ log "== 10. Cada uno cobra su parte: Ana 77 XLM (70 %) y Beto 33 XLM (30 %) =="
 invocar ana cobrar --id 0 --aportante "$ANA"
 invocar beto cobrar --id 0 --aportante "$BETO"
 
-log "== 11. Estado final =="
+log "== 11. Historial público: lo prometido contra lo pagado =="
+log "Prometido (mínimos de las etapas liberadas):"
+invocar ana prometido --id 0
+log "Pago 1 del historial:"
+invocar ana pago --id 0 --n 0
+
+log "== 12. Estado final =="
 invocar dueno proyecto --id 0
 ORBITA_DESPUES=$(saldo_orbita)
 log "Comisión cobrada por Órbita: $(( ORBITA_DESPUES - ORBITA_ANTES )) stroops (1 XLM = 10.000.000)"
