@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="Huerta comunitaria">
+  <rect width="800" height="450" fill="#e3efe6"/>
+  <circle cx="660" cy="90" r="48" fill="#f2c14e"/>
+  <rect y="270" width="800" height="180" fill="#8a5a33"/>
+  <g fill="#6b4425"><rect x="40" y="300" width="720" height="14" rx="7"/><rect x="40" y="350" width="720" height="14" rx="7"/><rect x="40" y="400" width="720" height="14" rx="7"/></g>
+  <g fill="#1f6b45">
+    <path d="M90 300 q-20-60 0-90 q20 30 0 90z"/><path d="M90 300 q-50-30-55-70 q40 10 55 70z"/><path d="M90 300 q50-30 55-70 q-40 10-55 70z"/>
+    <path d="M250 300 q-20-60 0-90 q20 30 0 90z"/><path d="M250 300 q-50-30-55-70 q40 10 55 70z"/><path d="M250 300 q50-30 55-70 q-40 10-55 70z"/>
+    <path d="M410 300 q-20-60 0-90 q20 30 0 90z"/><path d="M410 300 q-50-30-55-70 q40 10 55 70z"/><path d="M410 300 q50-30 55-70 q-40 10-55 70z"/>
+    <path d="M570 300 q-20-60 0-90 q20 30 0 90z"/><path d="M570 300 q-50-30-55-70 q40 10 55 70z"/><path d="M570 300 q50-30 55-70 q-40 10-55 70z"/>
+    <path d="M730 300 q-20-60 0-90 q20 30 0 90z"/><path d="M730 300 q-50-30-55-70 q40 10 55 70z"/><path d="M730 300 q50-30 55-70 q-40 10-55 70z"/>
+  </g>
+  <g fill="#8cc63f"><circle cx="170" cy="345" r="12"/><circle cx="330" cy="345" r="12"/><circle cx="490" cy="345" r="12"/><circle cx="650" cy="345" r="12"/><circle cx="170" cy="395" r="12"/><circle cx="330" cy="395" r="12"/><circle cx="490" cy="395" r="12"/><circle cx="650" cy="395" r="12"/></g>
+  <text x="40" y="70" font-family="Georgia, serif" font-size="40" font-weight="700" fill="#1d2a22">Huerta comunitaria</text>
+  <text x="40" y="110" font-family="Georgia, serif" font-size="24" fill="#5d6b62">Barrio Esperanza</text>
+</svg>
