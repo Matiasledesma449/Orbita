@@ -13,6 +13,7 @@ El plan está en `plan/TICKETS.md`.
 3. **Antes de escribir código de Stellar, consultar las skills de `stellar-dev`** (smart-contracts, dapp, assets, etc.). Como apoyo: https://developers.stellar.org/llms.txt y el MCP Raven si está conectado. Nada de prueba y error a ciegas: verificar versiones instaladas y documentación oficial antes de cambiar código.
 4. **Trabajar en la rama `v2`.** Commit al terminar cada ticket. **Nunca tocar `main` sin aprobación del usuario**: `main` es la entrega de la hackathon y tiene que seguir funcionando (GitHub Pages publica desde `main` /docs).
 5. **Explicar todo en español simple y breve.** El usuario es poco técnico.
+6. **Guardar el resumen de cada ticket en `plan/RESUMEN-T<n>.md`** con el mismo formato que `plan/RESUMEN-T1.md` (estado, tests, CONTRACT_ID si cambia, tabla de transacciones con links, qué cambió), incluirlo en el commit del ticket y mostrárselo al usuario.
 
 ## Datos útiles
 
