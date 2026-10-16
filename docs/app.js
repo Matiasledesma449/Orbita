@@ -111,10 +111,10 @@ async function conectar() {
   if (!F) { mostrarGuia(); return aviso("Primero instalá Freighter: seguí los 3 pasos de arriba.", 7000); }
   let r;
   try { r = await F.requestAccess(); }
-  catch (e) { console.error(e); return aviso(`No se pudo conectar con Freighter: ${e?.message || e}`, 7000); }
-  if (r?.error) return aviso(r.error.message || String(r.error), 7000);
+  catch (e) { console.error(e); mostrarGuia(); return aviso(`No se pudo conectar con Freighter: ${e?.message || e}`, 7000); }
+  if (r?.error) { mostrarGuia(); return aviso(r.error.message || String(r.error), 7000); }
   const direccion = typeof r === "string" ? r : r?.address;
-  if (!direccion) return aviso("Freighter no devolvió ninguna cuenta. Abrí la extensión, desbloqueala y volvé a intentar.", 7000);
+  if (!direccion) { mostrarGuia(); return aviso("Freighter no devolvió ninguna cuenta. Abrí la extensión, desbloqueala y volvé a intentar.", 7000); }
   cuenta = direccion;
   $("guia").hidden = true;
   $("cuenta").textContent = corto(cuenta);
