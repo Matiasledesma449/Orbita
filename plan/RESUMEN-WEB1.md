@@ -11,6 +11,8 @@ La Fase 1 está terminada y verificada contra el contrato real en testnet. Está
   2. La letra pasó de 15 a **18 px**, manteniendo su estilo.
   3. En la portada quedaron tus botones: "Quiero invertir" y "Quiero financiar mi proyecto".
 
+- **Segunda tanda del compañero (17/10, antes de publicar):** subió a `main` un ícono para la pestaña del navegador y el celular, y un **menú de billetera** (copiar dirección, cargar XLM de prueba y desconectar). Lo integré en `v2` con otro merge: resolví los conflictos a mano, conservando la Fase 1 y sumando su ícono y su menú, con letra más grande. Su menú reemplaza mi arreglo de poner "Cargar XLM de prueba" solo en la guía (ahora está en los dos lugares). Probado en Chromium con una billetera simulada: conectar, abrir el menú, ver la dirección y desconectar, sin errores y sin desborde.
+
 ## Qué hay en la Fase 1
 
 - **Barra fija arriba:** Inicio · Cómo funciona · Proyectos · Publicar · Mi panel · Preguntas · [Conectar billetera] · GitHub. En celular, menú ☰ que ocupa todo el ancho. Al conectar, el botón muestra la cuenta ("✓ GATS…D4TT").

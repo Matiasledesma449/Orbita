@@ -353,12 +353,37 @@ async function conectar() {
   $("btnConectar").textContent = `✓ ${corto(cuenta)}`;
   $("btnConectar").title = `Billetera conectada: ${cuenta}`;
   $("btnConectar").classList.add("conectado");
+  $("menuDir").textContent = cuenta;
   $("btnFondearGuia").hidden = false;
   aviso("Listo: tu billetera está conectada.");
   irA();
 }
 
+// Menú de la billetera (de la rama main): copiar dirección, cargar XLM de prueba y desconectar.
+function abrirMenuBilletera(abrir) {
+  $("menuBilletera").hidden = !abrir;
+  $("btnConectar").setAttribute("aria-expanded", String(abrir));
+}
+
+function desconectar() {
+  cuenta = null;
+  abrirMenuBilletera(false);
+  $("btnConectar").textContent = "Conectar billetera";
+  $("btnConectar").title = "";
+  $("btnConectar").classList.remove("conectado");
+  $("btnFondearGuia").hidden = true;
+  aviso("Billetera desconectada de Órbita.");
+  irA();
+}
+
+async function copiarDireccion() {
+  abrirMenuBilletera(false);
+  try { await navigator.clipboard.writeText(cuenta); aviso("Dirección copiada."); }
+  catch { aviso(cuenta, 8000); }
+}
+
 async function fondear(ev) {
+  abrirMenuBilletera(false);
   const b = ev.currentTarget;
   b.disabled = true;
   try {
@@ -372,7 +397,12 @@ async function fondear(ev) {
 function cerrarMenu() { $("nav").classList.remove("abierto"); $("btnMenu").setAttribute("aria-expanded", "false"); }
 $("btnMenu").onclick = () => { const abierto = $("nav").classList.toggle("abierto"); $("btnMenu").setAttribute("aria-expanded", String(abierto)); };
 
-$("btnConectar").onclick = conectar;
+$("btnConectar").onclick = () => (cuenta ? abrirMenuBilletera($("menuBilletera").hidden) : conectar());
+$("btnFondear").onclick = fondear;
 $("btnFondearGuia").onclick = fondear;
+$("btnDesconectar").onclick = desconectar;
+$("btnCopiar").onclick = copiarDireccion;
+document.addEventListener("click", (e) => { if (!e.target.closest(".billetera")) abrirMenuBilletera(false); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") abrirMenuBilletera(false); });
 window.addEventListener("hashchange", irA);
 irA();

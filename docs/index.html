@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Órbita · Financiá proyectos por etapas</title>
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta name="theme-color" content="#1a1b1f">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -58,6 +62,18 @@
   button.sec:hover, .boton.sec:hover { border-color: var(--naranja); color: var(--naranja-claro); }
   button.peligro { background: var(--rojo); box-shadow: 0 8px 24px rgba(255,90,78,.25); }
   button.conectado { background: linear-gradient(90deg, var(--verde-osc), var(--naranja)); }
+  /* menú de la billetera (rama main) */
+  .billetera { position: relative; }
+  button.conectado::after { content: ""; display: inline-block; width: 8px; height: 8px; margin-left: 6px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-3px) rotate(45deg); transition: transform .2s; }
+  button.conectado[aria-expanded="true"]::after { transform: translateY(1px) rotate(-135deg); }
+  .menu-billetera { position: absolute; right: 0; top: calc(100% + 10px); width: 300px; padding: 8px; display: grid; gap: 2px; z-index: 25;
+    background: #26272c; border: 1px solid var(--borde); border-radius: 18px; box-shadow: 0 20px 48px rgba(0,0,0,.5); }
+  .mb-dir { padding: 10px 14px 12px; border-bottom: 1px solid var(--borde); margin-bottom: 6px; display: grid; gap: 2px; }
+  .mb-dir small { color: var(--tenue); font-size: 15px; }
+  .mb-dir span { font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .menu-billetera .item { width: 100%; justify-content: flex-start; background: transparent; box-shadow: none; color: var(--tinta); font-weight: 600; font-size: 18px; padding: 12px 14px; border-radius: 12px; min-height: 50px; }
+  .menu-billetera .item:hover { background: rgba(255,255,255,.07); transform: none; filter: none; }
+  .menu-billetera .item.rojo { color: var(--rojo); }
   header button { min-height: 48px; padding: 11px 20px; font-size: 17px; white-space: nowrap; }
 
   /* ---------- páginas ---------- */
@@ -209,7 +225,15 @@
       <a href="#preguntas">Preguntas</a>
     </nav>
     <div class="acciones-sup">
-      <button id="btnConectar">Conectar billetera</button>
+      <div class="billetera">
+        <button id="btnConectar" aria-haspopup="menu" aria-expanded="false">Conectar billetera</button>
+        <div class="menu-billetera" id="menuBilletera" role="menu" hidden>
+          <div class="mb-dir"><small>Tu billetera (red de prueba)</small><span id="menuDir"></span></div>
+          <button type="button" class="item" role="menuitem" id="btnCopiar">Copiar dirección</button>
+          <button type="button" class="item" role="menuitem" id="btnFondear">Cargar XLM de prueba</button>
+          <button type="button" class="item rojo" role="menuitem" id="btnDesconectar">Desconectar</button>
+        </div>
+      </div>
       <a class="github" href="https://github.com/Matiasledesma449/Orbita" target="_blank" rel="noopener" title="Código en GitHub" aria-label="Código en GitHub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l-6-6 6-6M15 6l6 6-6 6"/></svg></a>
       <button class="menu-btn" id="btnMenu" aria-label="Abrir menú" aria-expanded="false">☰</button>
     </div>
