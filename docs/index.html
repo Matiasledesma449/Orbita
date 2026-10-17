@@ -482,6 +482,11 @@
 <script src="https://cdn.jsdelivr.net/npm/@stellar/freighter-api@6.0.1/build/index.min.js"></script>
 <script type="module" src="./app.js"></script>
 <script>
+  // Seguro: si la web no llega a arrancar (por ejemplo, no cargó la librería de Stellar),
+  // a los 10 segundos las tarjetas de Inicio muestran "—" en vez de quedarse en "…".
+  setTimeout(() => document.querySelectorAll("#numeros .numero b").forEach((b) => { if (b.textContent === "…") b.textContent = "—"; }), 10000);
+</script>
+<script>
   // Alto real del encabezado, para que el Inicio entre justo en la pantalla
   (() => { const h = document.querySelector("header"); const fijar = () => document.documentElement.style.setProperty("--alto-header", h.offsetHeight + "px"); fijar(); addEventListener("resize", fijar); })();
 </script>

@@ -231,16 +231,27 @@ function irA() {
 // ---------- inicio: números generales ----------
 const esPrueba = (p) => (CONFIG.pruebas || []).includes(p.id);
 
+// Las tarjetas de Inicio nunca se quedan cargando: como máximo 10 segundos, reintentando
+// si una lectura falla; si la red no responde a tiempo, muestran "—".
 async function mostrarNumeros() {
-  try {
-    const lista = (await cargarTodos()).filter((p) => !esPrueba(p));
-    const suma = (campo) => lista.reduce((s, p) => s + BigInt(p[campo]), 0n);
-    const valores = [String(lista.length), plata(suma("recaudado")), plata(suma("liberado")), plata(suma("total_pagado"))];
-    document.querySelectorAll("#numeros .numero b").forEach((b, i) => (b.textContent = valores[i]));
-  } catch (e) {
-    console.error(e);
-    document.querySelectorAll("#numeros .numero b").forEach((b) => (b.textContent = "—"));
+  const cajas = document.querySelectorAll("#numeros .numero b");
+  const limite = Date.now() + 10000;
+  while (Date.now() < limite) {
+    try {
+      const resto = limite - Date.now();
+      const todos = await Promise.race([cargarTodos(), new Promise((_, no) => setTimeout(() => no(new Error("La red tardó más de 10 segundos")), resto))]);
+      const lista = todos.filter((p) => !esPrueba(p));
+      const suma = (campo) => lista.reduce((s, p) => s + BigInt(p[campo]), 0n);
+      const valores = [String(lista.length), plata(suma("recaudado")), plata(suma("liberado")), plata(suma("total_pagado"))];
+      cajas.forEach((b, i) => (b.textContent = valores[i]));
+      return;
+    } catch (e) {
+      console.error(e);
+      if (limite - Date.now() > 1500) await new Promise((r) => setTimeout(r, 1000)); // reintentar
+      else break;
+    }
   }
+  cajas.forEach((b) => (b.textContent = "—"));
 }
 
 // ---------- proyectos ----------
