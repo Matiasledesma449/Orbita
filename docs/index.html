@@ -88,21 +88,25 @@
   .chico { font-size: 16px; color: var(--tenue); }
 
   /* ---------- inicio ---------- */
-  .portada { min-height: calc(100vh - 240px); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 18px; padding: 48px 0 32px; position: relative; }
-  .portada .orbitas { position: absolute; inset: 0; margin: auto; width: min(620px, 90vw); aspect-ratio: 1; pointer-events: none; opacity: .9; }
-  .portada h1 { position: relative; font-size: clamp(72px, 15vw, 184px); font-weight: 800; letter-spacing: -.04em; line-height: .95; text-transform: uppercase;
+  /* Inicio: todo entra en una pantalla, sin deslizar */
+  .pagina[data-pagina="inicio"] { min-height: calc(100svh - var(--alto-header, 82px)); padding: clamp(12px, 3vh, 32px) 0 clamp(12px, 2.5vh, 28px);
+    display: flex; flex-direction: column; justify-content: center; gap: clamp(14px, 2.6vh, 28px); }
+  .pagina[data-pagina="inicio"][hidden] { display: none; }
+  .portada { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: clamp(8px, 1.6vh, 16px); padding: 0; position: relative; }
+  .portada .orbitas { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); height: min(560px, 68vh, 90vw); width: auto; aspect-ratio: 1; pointer-events: none; opacity: .9; }
+  .portada h1 { position: relative; font-size: clamp(52px, min(8.5vw, 12vh), 128px); font-weight: 800; letter-spacing: -.04em; line-height: .95; text-transform: uppercase;
     background: linear-gradient(180deg, #ffffff 30%, #ffc79e 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .portada p { position: relative; font-size: clamp(22px, 2.8vw, 32px); color: var(--suave); font-weight: 500; }
-  .portada p.quien { font-size: clamp(18px, 1.8vw, 21px); color: var(--naranja-claro); font-weight: 600; max-width: 720px; }
-  .portada .cta { position: relative; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
-  .portada .cta .boton { padding: 18px 32px; font-size: 20px; }
+  .portada p { position: relative; margin: 0; font-size: clamp(18px, min(2.2vw, 3.2vh), 26px); color: var(--suave); font-weight: 500; }
+  .portada p.quien { font-size: clamp(15px, min(1.5vw, 2.3vh), 18px); color: var(--naranja-claro); font-weight: 600; max-width: 680px; }
+  .portada .cta { position: relative; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: clamp(4px, 1vh, 12px); }
+  .portada .cta .boton { padding: 14px 28px; font-size: 18px; min-height: 50px; }
   .numeros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-  .numero { background: var(--vidrio); border: 1px solid var(--borde); border-radius: 20px; padding: 22px; text-align: center;
+  .numero { background: var(--vidrio); border: 1px solid var(--borde); border-radius: 20px; padding: clamp(12px, 2vh, 20px) 18px; text-align: center;
     transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease, border-color .25s ease, background .25s ease; will-change: transform; }
   .numero:hover { transform: translateY(-6px); border-color: rgba(255,107,26,.75); background: rgba(255,107,26,.06);
     box-shadow: 0 0 0 1px rgba(255,107,26,.35), 0 10px 30px rgba(255,107,26,.28), 0 0 56px rgba(255,107,26,.18); }
   @media (prefers-reduced-motion: reduce) { .numero, .numero:hover { transition: none; transform: none; } }
-  .numero b { display: block; font-size: 34px; font-weight: 800; color: var(--naranja-claro); font-variant-numeric: tabular-nums; }
+  .numero b { display: block; font-size: clamp(24px, 3.6vh, 32px); font-weight: 800; color: var(--naranja-claro); font-variant-numeric: tabular-nums; }
   .numero span { color: var(--suave); font-size: 17px; }
 
   /* ---------- cómo funciona ---------- */
@@ -284,6 +288,11 @@
     h2, .ficha h2 { font-size: 30px; }
   }
   @media (max-width: 480px) { .numeros, .pasos.cuatro { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) {
+    .numeros { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .numero { padding: 12px 10px; } .numero b { font-size: 22px; } .numero span { font-size: 14px; }
+    .portada .cta .boton { padding: 12px 20px; font-size: 16px; min-height: 46px; }
+  }
 </style>
 </head>
 <body>
@@ -344,7 +353,7 @@
       <div class="numero"><b>…</b><span>Pagado a los equipos</span></div>
       <div class="numero"><b>…</b><span>Devuelto a los inversores</span></div>
     </div>
-    <p class="chico" style="text-align:center;margin-top:12px">Números leídos en vivo de la blockchain de Stellar (red de prueba).</p>
+    <p class="chico" style="text-align:center;margin:-6px 0 0">Números leídos en vivo de la blockchain de Stellar (red de prueba).</p>
   </section>
 
   <!-- ===================== CÓMO FUNCIONA ===================== -->
@@ -460,5 +469,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@17.2.1/dist/stellar-sdk.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@stellar/freighter-api@6.0.1/build/index.min.js"></script>
 <script type="module" src="./app.js"></script>
+<script>
+  // Alto real del encabezado, para que el Inicio entre justo en la pantalla
+  (() => { const h = document.querySelector("header"); const fijar = () => document.documentElement.style.setProperty("--alto-header", h.offsetHeight + "px"); fijar(); addEventListener("resize", fijar); })();
+</script>
 </body>
 </html>
