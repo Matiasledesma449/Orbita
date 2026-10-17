@@ -13,6 +13,8 @@ La Fase 1 está terminada y verificada contra el contrato real en testnet. Está
 
 - **Segunda tanda del compañero (17/10, antes de publicar):** subió a `main` un ícono para la pestaña del navegador y el celular, y un **menú de billetera** (copiar dirección, cargar XLM de prueba y desconectar). Lo integré en `v2` con otro merge: resolví los conflictos a mano, conservando la Fase 1 y sumando su ícono y su menú, con letra más grande. Su menú reemplaza mi arreglo de poner "Cargar XLM de prueba" solo en la guía (ahora está en los dos lugares). Probado en Chromium con una billetera simulada: conectar, abrir el menú, ver la dirección y desconectar, sin errores y sin desborde.
 
+- **Tercera tanda del compañero (17/10, 05:13):** reescribió los textos de "Cómo funciona" con un tono más formal. Como choca con el lenguaje simple que pediste, te consulté y elegiste **la mezcla**: arriba, su título ("Financiamiento colectivo con plata que se libera por resultados") y su bajada, adaptados a "invertir", "se le paga al equipo" y "tu parte"; abajo, los 4 pasos y las 3 protecciones en lenguaje simple.
+
 ## Qué hay en la Fase 1
 
 - **Barra fija arriba:** Inicio · Cómo funciona · Proyectos · Publicar · Mi panel · Preguntas · [Conectar billetera] · GitHub. En celular, menú ☰ que ocupa todo el ancho. Al conectar, el botón muestra la cuenta ("✓ GATS…D4TT").
