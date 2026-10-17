@@ -58,6 +58,24 @@
   button.chico { padding: 8px 16px; font-size: 14px; }
   button.conectado { background: linear-gradient(90deg, var(--verde-osc), var(--naranja)); box-shadow: 0 8px 24px rgba(61,190,116,.25); }
 
+  /* ---------- navbar ---------- */
+  .nav { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); }
+  .nav a { color: var(--suave); text-decoration: none; font-weight: 600; font-size: 14px; padding: 8px 14px; border-radius: 999px; white-space: nowrap; transition: background .2s, color .2s; }
+  .nav a:hover { color: var(--tinta); background: rgba(255,255,255,.08); }
+  .nav a.activo { color: #fff; background: var(--naranja); }
+
+  /* ---------- portada ÓRBITA ---------- */
+  .portada { min-height: calc(100vh - 72px); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 18px; padding: 64px 0; position: relative; }
+  .portada .orbitas { position: absolute; inset: 0; margin: auto; width: min(640px, 90vw); aspect-ratio: 1; pointer-events: none; opacity: .9; }
+  .portada h1 { position: relative; font-size: clamp(64px, 15vw, 184px); font-weight: 800; letter-spacing: -.04em; line-height: .95; text-transform: uppercase;
+    background: linear-gradient(180deg, #ffffff 30%, #ffc79e 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .portada p { position: relative; margin: 0; font-size: clamp(20px, 2.6vw, 30px); color: var(--suave); font-weight: 500; }
+  .portada .cta { position: relative; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
+  .portada .cta a { text-decoration: none; }
+  .boton-link { display: inline-block; font-weight: 700; border-radius: 999px; padding: 14px 26px; background: var(--naranja); color: #fff; box-shadow: 0 8px 24px rgba(255,107,26,.28); }
+  .boton-link.sec { background: transparent; color: var(--tinta); border: 1.5px solid var(--borde); box-shadow: none; }
+  .bajar { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); color: var(--tenue); font-size: 13px; text-decoration: none; }
+
   /* ---------- hero ---------- */
   .hero { padding: 56px 0 24px; display: grid; grid-template-columns: 1.25fr 1fr; gap: 40px; align-items: center; }
   .hero h1 { font-size: clamp(36px, 5.4vw, 64px); font-weight: 800; }
@@ -139,6 +157,7 @@
   .guia-pasos .paso { background: rgba(0,0,0,.25); }
   .guia.resaltada { border-color: var(--naranja); box-shadow: 0 0 0 4px rgba(255,107,26,.3); }
 
+  @media (max-width: 1060px) { header .envoltura { height: auto; padding-top: 10px; padding-bottom: 10px; flex-wrap: wrap; } .nav { order: 3; width: 100%; overflow-x: auto; scrollbar-width: none; } }
   @media (max-width: 900px) { form.tarjeta { grid-template-columns: 1fr; } form.tarjeta .col + .col { border-left: 0; padding-left: 0; border-top: 1px solid var(--borde); padding-top: 20px; } }
   @media (max-width: 760px) {
     .riel { display: none; } .contenido { padding-left: 0; }
@@ -165,6 +184,14 @@
       <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="7" fill="#f4f4f6"/><ellipse cx="16" cy="16" rx="14" ry="5.5" fill="none" stroke="#1a1b1f" stroke-width="4" transform="rotate(-22 16 16)"/><ellipse cx="16" cy="16" rx="14" ry="5.5" fill="none" stroke="#f4f4f6" stroke-width="1.8" transform="rotate(-22 16 16)"/></svg>
       Órbita
     </div>
+    <nav class="nav" id="nav" aria-label="Navegación principal">
+      <a href="#inicio">Inicio</a>
+      <a href="#como-funciona">Cómo funciona</a>
+      <a href="#guia">Empezar</a>
+      <a href="#proyectos-sec">Proyectos</a>
+      <a href="#publicar">Publicar</a>
+      <a href="#transacciones">Transacciones</a>
+    </nav>
     <div class="acciones">
       <span class="cuenta" id="cuenta">Sin conectar</span>
       <button class="sec chico" id="btnFondear" hidden>Cargar XLM de prueba</button>
@@ -174,7 +201,25 @@
 </header>
 
 <main class="envoltura">
-  <div class="hero">
+  <section id="inicio" class="portada">
+    <svg class="orbitas" viewBox="0 0 400 400" aria-hidden="true">
+      <circle cx="200" cy="200" r="190" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="1.5"/>
+      <circle cx="200" cy="200" r="130" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1.5"/>
+      <circle cx="200" cy="200" r="40" fill="#ff6b1a" opacity=".22"/>
+      <circle cx="340" cy="72" r="7" fill="#f4f4f6" opacity=".7"/>
+      <circle cx="78" cy="262" r="5" fill="#3dbe74" opacity=".8"/>
+      <circle cx="250" cy="380" r="6" fill="#ffb27a" opacity=".8"/>
+    </svg>
+    <h1>Órbita</h1>
+    <p>Una forma de financiar tus proyectos</p>
+    <div class="cta">
+      <a class="boton-link" href="#proyectos-sec">Ver proyectos</a>
+      <a class="boton-link sec" href="#publicar">Publicar mi proyecto</a>
+    </div>
+    <a class="bajar" href="#como-funciona">↓ Cómo funciona</a>
+  </section>
+
+  <div class="hero" id="como-funciona" style="scroll-margin-top:90px">
     <div>
       <h1>Apoyá ideas. La plata se libera <em>solo cuando cumplen</em>.</h1>
       <p>Órbita tokeniza proyectos de personas y empresas argentinas. Cada aporte te da participación y voto. El equipo cobra etapa por etapa, cuando la comunidad confirma que cumplió. Si no cumple, te devolvemos lo que queda.</p>
@@ -236,5 +281,18 @@
 <script src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@17.2.1/dist/stellar-sdk.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@stellar/freighter-api@6.0.1/build/index.min.js"></script>
 <script type="module" src="./app.js"></script>
+<script>
+  (() => {
+    const links = [...document.querySelectorAll("#nav a")];
+    const secciones = links.map((a) => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+    const obs = new IntersectionObserver((entradas) => {
+      entradas.forEach((e) => {
+        if (!e.isIntersecting) return;
+        links.forEach((a) => a.classList.toggle("activo", a.getAttribute("href") === "#" + e.target.id));
+      });
+    }, { rootMargin: "-45% 0px -50% 0px" });
+    secciones.forEach((s) => obs.observe(s));
+  })();
+</script>
 </body>
 </html>
