@@ -120,11 +120,34 @@ async function conectar() {
   $("cuenta").textContent = corto(cuenta);
   $("btnConectar").textContent = "Conectado";
   $("btnConectar").classList.add("conectado");
-  $("btnFondear").hidden = false;
+  $("menuDir").textContent = corto(cuenta);
   cargarProyectos();
 }
 
+function abrirMenu(abrir) {
+  $("menuBilletera").hidden = !abrir;
+  $("btnConectar").setAttribute("aria-expanded", String(abrir));
+}
+
+function desconectar() {
+  cuenta = null;
+  abrirMenu(false);
+  $("cuenta").textContent = "Sin conectar";
+  $("btnConectar").textContent = "Conectar Freighter";
+  $("btnConectar").classList.remove("conectado");
+  $("guia").hidden = false;
+  aviso("Billetera desconectada de Órbita.");
+  cargarProyectos();
+}
+
+async function copiarDireccion() {
+  abrirMenu(false);
+  try { await navigator.clipboard.writeText(cuenta); aviso("Dirección copiada."); }
+  catch { aviso(cuenta, 8000); }
+}
+
 async function fondear() {
+  abrirMenu(false);
   const b = $("btnFondear");
   b.disabled = true;
   try {
@@ -251,7 +274,11 @@ $("formCrear").onsubmit = (ev) => {
 };
 
 $("btnHito").onclick = () => agregarHito();
-$("btnConectar").onclick = conectar;
+$("btnConectar").onclick = () => (cuenta ? abrirMenu($("menuBilletera").hidden) : conectar());
+$("btnDesconectar").onclick = desconectar;
+$("btnCopiar").onclick = copiarDireccion;
+document.addEventListener("click", (e) => { if (!e.target.closest(".billetera")) abrirMenu(false); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") abrirMenu(false); });
 $("btnFondear").onclick = fondear;
 $("btnRecargar").onclick = cargarProyectos;
 agregarHito("Prototipo funcionando", "50");

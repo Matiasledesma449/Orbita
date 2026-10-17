@@ -56,6 +56,18 @@
   button.chico { padding: 8px 16px; font-size: 14px; }
   header button, header .github { white-space: nowrap; flex: none; }
   header .acciones { flex-wrap: nowrap; }
+  .billetera { position: relative; }
+  button.conectado::after { content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 10px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-3px) rotate(45deg); transition: transform .2s; }
+  button.conectado[aria-expanded="true"]::after { transform: translateY(1px) rotate(-135deg); }
+  .menu-billetera { position: absolute; right: 0; top: calc(100% + 10px); width: 260px; padding: 8px; display: grid; gap: 2px; z-index: 20;
+    background: #26272c; border: 1px solid var(--borde); border-radius: 18px; box-shadow: 0 20px 48px rgba(0,0,0,.5); }
+  .menu-billetera[hidden] { display: none; }
+  .mb-dir { padding: 10px 12px 12px; border-bottom: 1px solid var(--borde); margin-bottom: 6px; display: grid; gap: 2px; }
+  .mb-dir small { color: var(--tenue); font-size: 12px; }
+  .mb-dir span { font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .menu-billetera .item { width: 100%; text-align: left; background: transparent; box-shadow: none; color: var(--tinta); font-weight: 600; font-size: 14px; padding: 10px 12px; border-radius: 12px; }
+  .menu-billetera .item:hover { background: rgba(255,255,255,.07); transform: none; filter: none; }
+  .menu-billetera .item.rojo { color: var(--rojo); }
   button.conectado { background: linear-gradient(90deg, var(--verde-osc), var(--naranja)); box-shadow: 0 8px 24px rgba(61,190,116,.25); }
 
   /* ---------- navbar ---------- */
@@ -191,8 +203,15 @@
     </nav>
     <div class="acciones">
       <span class="cuenta" id="cuenta">Sin conectar</span>
-      <button class="sec chico" id="btnFondear" hidden>Cargar XLM de prueba</button>
-      <button id="btnConectar">Conectar Freighter</button>
+      <div class="billetera">
+        <button id="btnConectar" aria-haspopup="menu" aria-expanded="false">Conectar Freighter</button>
+        <div class="menu-billetera" id="menuBilletera" role="menu" hidden>
+          <div class="mb-dir"><small>Tu billetera (testnet)</small><span id="menuDir"></span></div>
+          <button type="button" class="item" role="menuitem" id="btnCopiar">Copiar dirección</button>
+          <button type="button" class="item" role="menuitem" id="btnFondear">Cargar XLM de prueba</button>
+          <button type="button" class="item rojo" role="menuitem" id="btnDesconectar">Desconectar</button>
+        </div>
+      </div>
       <a class="github" href="https://github.com/Matiasledesma449/Orbita" target="_blank" rel="noopener" title="Código en GitHub" aria-label="Código en GitHub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l-6-6 6-6M15 6l6 6-6 6"/></svg></a>
     </div>
   </div>
