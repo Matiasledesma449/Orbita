@@ -126,6 +126,7 @@ async function conectar() {
   $("guia").hidden = true;
   $("cuenta").textContent = corto(cuenta);
   $("btnConectar").textContent = "Conectado";
+  $("btnConectar").classList.add("conectado");
   $("btnFondear").hidden = false;
   cargarProyectos();
 }
@@ -178,9 +179,15 @@ async function tarjetaProyecto(id) {
     <div class="meta-linea"><span>${aMoneda(p.recaudado)} de ${aMoneda(p.meta)} ${CONFIG.moneda}</span><span>${pct}% · cierra ${vence}</span></div>
     <div class="barra"><i style="width:${Math.min(pct, 100)}%"></i></div>
     <ol class="hitos">${p.hitos.map((h, i) => {
-      const clase = h.liberado ? "hecho" : (estado === 1 && i === actual ? "actual" : "");
-      const votos = estado === 1 && i === actual ? `<span class="votos">👍 ${pctDe(h.a_favor, p.recaudado)}% · 👎 ${pctDe(h.en_contra, p.recaudado)}%</span>` : "";
-      return `<li class="${clase}"><span>${i + 1}. ${escapar(h.descripcion)} · <b>${aMoneda(h.monto)}</b></span>${votos}</li>`;
+      const esActual = !h.liberado && (estado === 0 || estado === 1) && i === actual;
+      const clase = h.liberado ? "hecho" : esActual ? "actual" : "bloqueado";
+      const marcador = h.liberado ? ICONO.check : esActual ? (estado === 1 ? ICONO.estrella : "!") : ICONO.candado;
+      let extra = "", nota = "";
+      if (h.liberado) nota = "Liberado al dueño";
+      else if (esActual && estado === 0) { nota = "Se libera al alcanzar la meta y aprobarse"; extra = `<span class="etiqueta">Activo ⏳</span>`; }
+      else if (esActual && estado === 1) { nota = "En votación"; extra = `<span class="votos"><span class="si">👍 ${pctDe(h.a_favor, p.recaudado)}%</span> / <span class="no">👎 ${pctDe(h.en_contra, p.recaudado)}%</span></span>`; }
+      else nota = "Se desbloquea al completar el paso anterior";
+      return `<li class="${clase}"><span class="marcador">${marcador}</span><div class="caja-hito"><div><span class="tit">${i + 1}. ${escapar(h.descripcion)} · ${aMoneda(h.monto)} ${CONFIG.moneda}</span><small>${nota}</small></div>${extra}</div></li>`;
     }).join("")}</ol>
     <div class="meta-linea"><span>Dueño: ${corto(p.dueno)}${esDueno ? " (vos)" : ""}</span><span>Liberado: ${aMoneda(p.liberado)}</span></div>
     ${mia > 0n ? `<div class="mio">Tu participación: ${aMoneda(mia)} ${CONFIG.moneda} (${pctDe(mia, p.recaudado || 1)}% del voto)</div>` : ""}
@@ -209,6 +216,11 @@ async function tarjetaProyecto(id) {
   return t;
 }
 
+const ICONO = {
+  check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`,
+  estrella: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.9l-5.4 2.9 1.1-6.1-4.5-4.3 6.1-.8z"/></svg>`,
+  candado: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>`,
+};
 const pctDe = (a, b) => Number((BigInt(a) * 100n) / BigInt(b || 1));
 const escapar = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
