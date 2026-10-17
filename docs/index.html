@@ -97,7 +97,11 @@
   .portada .cta { position: relative; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
   .portada .cta .boton { padding: 18px 32px; font-size: 20px; }
   .numeros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-  .numero { background: var(--vidrio); border: 1px solid var(--borde); border-radius: 20px; padding: 22px; text-align: center; }
+  .numero { background: var(--vidrio); border: 1px solid var(--borde); border-radius: 20px; padding: 22px; text-align: center;
+    transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease, border-color .25s ease, background .25s ease; will-change: transform; }
+  .numero:hover { transform: translateY(-6px); border-color: rgba(255,107,26,.75); background: rgba(255,107,26,.06);
+    box-shadow: 0 0 0 1px rgba(255,107,26,.35), 0 10px 30px rgba(255,107,26,.28), 0 0 56px rgba(255,107,26,.18); }
+  @media (prefers-reduced-motion: reduce) { .numero, .numero:hover { transition: none; transform: none; } }
   .numero b { display: block; font-size: 34px; font-weight: 800; color: var(--naranja-claro); font-variant-numeric: tabular-nums; }
   .numero span { color: var(--suave); font-size: 17px; }
 
