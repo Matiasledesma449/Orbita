@@ -50,7 +50,7 @@ Antes de cada firma, la web explica en una frase qué va a pasar. Después confi
 | Web | https://matiasledesma449.github.io/Orbita/ |
 | Contract ID | `CBN7TBFLY7O7HZWQOH2N34IEDRUIRVVGQM5YWY6UOR6N2O5KA4ZVQXZC` |
 | Contrato en el explorador | https://stellar.expert/explorer/testnet/contract/CBN7TBFLY7O7HZWQOH2N34IEDRUIRVVGQM5YWY6UOR6N2O5KA4ZVQXZC |
-| Moneda | XLM de testnet (en producción: USDC) |
+| Moneda | XLM de la red de prueba (testnet) |
 | Cuenta de la plataforma (cobra el 2 %) | `GBWQLU5WVFSWYMMXVJ4DJFBRPHQJO6NYKJHZACG3CK67H6NFMV3EMWQZ` |
 | Proyectos de estudiantes | #5 «App de turnos para kioscos del barrio» · #6 «Plataforma de apuntes para la facultad» |
 | Video demo | _link YouTube / Drive_ |
@@ -117,7 +117,7 @@ Versiones: Rust 1.99, `soroban-sdk` 28.0.0 (Protocolo 29), Stellar CLI 28.1.0.
 - **Stellar CLI** para compilar, desplegar e invocar.
 - **Stellar SDK de JavaScript** (17.2.1) y **Stellar RPC** de testnet para leer, simular y enviar transacciones desde la web.
 - **Freighter** (6.0.1) para que cada persona firme con su billetera.
-- **Stellar Asset Contract (SAC):** el contrato mueve XLM nativo en testnet; en producción, USDC.
+- **Stellar Asset Contract (SAC):** el contrato mueve XLM nativo de testnet a través de la interfaz estándar de tokens, así que puede trabajar con cualquier activo de Stellar.
 
 ## Arquitectura
 
@@ -135,7 +135,7 @@ Persona ──(firma con Freighter)──> Web estática (docs/, GitHub Pages)
                           └─ vencimientos e "Incumplido"
                                          │
                                          ▼
-                          Moneda (XLM SAC en testnet / USDC)
+                          Moneda (XLM de testnet, vía SAC)
 ```
 
 ## Estructura del repo
@@ -194,13 +194,21 @@ Las reglas de trabajo para la IA están en [`CLAUDE.md`](CLAUDE.md).
 
 ## Próximos pasos
 
-- **USDC y anchors (SEP-24):** invertir y cobrar en dólares digitales, entrando y saliendo con pesos u otras monedas locales, sin tocar cripto.
-- **Passkeys:** entrar con la huella o la cara, sin instalar una billetera ni anotar 12 palabras.
-- **Verificación de identidad (KYC)** de equipos e inversores, según las leyes de cada país.
-- **Garantía del dueño:** que el equipo deje un depósito que se reparte entre los inversores si no cumple.
-- **Revisores y disputas:** mentores o docentes que validen la prueba de cada etapa, y un mecanismo para resolver desacuerdos.
-- **Auditoría** de seguridad del contrato antes de usar plata real.
-- **Régimen de tokenización de la CNV:** encuadrar la versión de inversión dentro de la regulación argentina.
+### Alcance: a dónde queremos llegar
+- **Etapa 1 – NEA:** un piloto con estudiantes de software de las universidades de Corrientes, Chaco y Misiones, con proyectos reales.
+- **Etapa 2 – Argentina y Latinoamérica:** sumar universidades e incubadoras de la región, con la web en español, inglés y portugués.
+- **Etapa 3 – El mundo:** que cualquier persona o empresa de cualquier país pueda invertir en un proyecto de acá, aprovechando que Stellar mueve valor entre países en segundos y por centavos.
+- **Para empresas:** que las software factories usen Órbita para financiar y conocer talento joven antes que nadie.
+- **App para celular:** invertir, votar y cobrar desde el teléfono.
+
+### Desafíos y cómo los vamos a encarar
+- **Regulación:** trabajar dentro del régimen de tokenización de la CNV y, en cada país nuevo, con asesoría legal local.
+- **Identidad de usuarios:** verificación de identidad (KYC) de equipos e inversores con proveedores ya integrados a Stellar.
+- **Entrar sin saber de cripto:** passkeys (entrar con la huella) y anchors de Stellar para entrar y salir en moneda local.
+- **Confianza en la prueba de avance:** revisores (docentes o mentores) que validen cada etapa, y un mecanismo para resolver desacuerdos.
+- **Seguridad del contrato:** una auditoría externa antes de usar en la red principal.
+- **Que los equipos cumplan:** un historial público de cada equipo, y una garantía que el dueño deja y se reparte entre los inversores si no cumple.
+- **Proteger la idea:** registrar en la blockchain una huella del proyecto con fecha, como prueba de quién la tuvo primero.
 
 ## Licencia
 
