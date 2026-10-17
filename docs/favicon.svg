@@ -1,7 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs><radialGradient id="g" cx="75%" cy="20%" r="90%"><stop offset="0" stop-color="#ff6b1a"/><stop offset=".55" stop-color="#3a2116"/><stop offset="1" stop-color="#1a1b1f"/></radialGradient></defs>
-  <rect width="64" height="64" rx="14" fill="url(#g)"/>
-  <circle cx="32" cy="32" r="11" fill="#f4f4f6"/>
-  <ellipse cx="32" cy="32" rx="24" ry="9.5" fill="none" stroke="#1f1d1e" stroke-width="7" transform="rotate(-22 32 32)"/>
-  <ellipse cx="32" cy="32" rx="24" ry="9.5" fill="none" stroke="#f4f4f6" stroke-width="3.2" transform="rotate(-22 32 32)"/>
+  <style>.l{fill:#1a1b1f;stroke:#1a1b1f}@media (prefers-color-scheme:dark){.l{fill:#f4f4f6;stroke:#f4f4f6}}</style>
+  <defs>
+    <mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect width="64" height="64" fill="#fff"/>
+      <ellipse cx="32" cy="32" rx="29" ry="11.5" fill="none" stroke="#000" stroke-width="7.5" transform="rotate(-22 32 32)"/>
+    </mask>
+  </defs>
+  <circle class="l" cx="32" cy="32" r="13" stroke="none" mask="url(#m)"/>
+  <ellipse class="l" cx="32" cy="32" rx="29" ry="11.5" fill="none" stroke-width="3.8" transform="rotate(-22 32 32)" style="fill:none"/>
 </svg>
