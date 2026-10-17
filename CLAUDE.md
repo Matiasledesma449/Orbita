@@ -21,7 +21,8 @@ El plan está en `plan/TICKETS.md`.
 
 - Toolchain: Rust 1.99, target `wasm32v1-none`, Stellar CLI 28.1.0, `soroban-sdk` 28.0.0 (Protocolo 29).
 - Web: `@stellar/stellar-sdk` 17.2.1 y `@stellar/freighter-api` 6.0.1 por CDN, con versión fija.
-- Cuentas de prueba del CLI: `dueno`, `ana`, `beto` y `orbita` (la plataforma, cobra la comisión del 2 %). Las claves viven en `~/.config/stellar`, nunca en el repo.
+- Cuentas de prueba del CLI: `dueno`, `ana`, `beto`, `orbita` (la plataforma, cobra la comisión del 2 %), `estudiante1` y `estudiante2` (dueños de los proyectos 5 y 6). Las claves viven en `~/.config/stellar`, nunca en el repo.
+- Enfoque (17/10/2026): Órbita es para **estudiantes con proyectos de software**; invierte cualquier persona o empresa de cualquier país. Los proyectos de prueba técnica van en `CONFIG.pruebas` (docs/config.js) y se muestran colapsados.
 - Diseño de inversión aprobado: `plan/ADR-001-inversion.md`.
 - Contrato v1 (en `main`): `CAACEJBBUWX4XGU7IPD7CMMYVCDLVZNDR5T2CIWSGNLPQTL3JTQ63HTZ`.
 - Si cambian funciones o argumentos del contrato, actualizar también `docs/app.js` y `scripts/deploy.sh`.

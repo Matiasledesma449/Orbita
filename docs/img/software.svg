@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="Proyecto de software">
+  <defs><radialGradient id="b" cx="78%" cy="18%" r="75%"><stop offset="0" stop-color="#ff6b1a" stop-opacity=".5"/><stop offset="1" stop-color="#1a1b1f" stop-opacity="0"/></radialGradient></defs>
+  <rect width="800" height="450" fill="#1a1b1f"/><rect width="800" height="450" fill="url(#b)"/>
+  <rect x="120" y="70" width="560" height="320" rx="22" fill="#26272c" stroke="#ffffff" stroke-opacity=".16" stroke-width="2"/>
+  <circle cx="152" cy="102" r="8" fill="#ff5a4e"/><circle cx="178" cy="102" r="8" fill="#ffb27a"/><circle cx="204" cy="102" r="8" fill="#3dbe74"/>
+  <g font-family="'SFMono-Regular', Consolas, monospace" font-size="24" xml:space="preserve">
+    <text x="156" y="170"><tspan fill="#ffb27a">const</tspan><tspan fill="#f4f4f6"> proyecto = {</tspan></text>
+    <text x="196" y="212"><tspan fill="#c4c6ce">etapas: </tspan><tspan fill="#3dbe74">3</tspan><tspan fill="#c4c6ce">,</tspan></text>
+    <text x="196" y="254"><tspan fill="#c4c6ce">equipo: </tspan><tspan fill="#3dbe74">"estudiantes"</tspan><tspan fill="#c4c6ce">,</tspan></text>
+    <text x="196" y="296"><tspan fill="#c4c6ce">listo: </tspan><tspan fill="#ff6b1a">true</tspan></text>
+    <text x="156" y="338" fill="#f4f4f6">}</text>
+  </g>
+  <rect x="172" y="320" width="16" height="26" fill="#ff6b1a" opacity=".85"/>
+</svg>

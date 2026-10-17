@@ -245,7 +245,7 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 **Rediseño pedido el 17/10/2026** (reemplaza el alcance de abajo y suma el mercado): todas las funciones del contrato en la web, en lenguaje simple para una persona mayor, sobre el diseño de la rama `main` (tema oscuro y naranja).
 - **Fase 1** ✅ Barra, Inicio, Cómo funciona, Proyectos, Ficha (solo lectura) y Preguntas. Ver `plan/RESUMEN-WEB1.md`.
 - **Fase 2** ✅ Invertir, votar y cobrar. Ver `plan/RESUMEN-WEB2.md`.
-- **Fase 3** ⬜ Publicar (formulario en 4 pasos), cobrar etapa, subir evidencia y devolver plata.
+- **Fase 3** ✅ Publicar (formulario en 4 pasos), cobrar etapa, subir evidencia y devolver plata. Además: enfoque en software de estudiantes y proyectos de prueba separados. Ver `plan/RESUMEN-WEB3.md`.
 - **Fase 4** ⬜ Mi panel, partes en venta (ofrecer, cancelar, comprar) y "Actualizar estado".
 
 ### Alcance original de T4

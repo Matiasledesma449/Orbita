@@ -128,7 +128,7 @@ function explicarError(e) {
 }
 
 // Explica qué va a pasar, pide la firma en Freighter, envía y confirma en palabras.
-async function operar({ metodo, args, titulo, frase, boton, exito }) {
+async function operar({ metodo, args, titulo, frase, boton, exito, despues }) {
   if (!cuenta) { aviso("Primero conectá tu billetera (botón de arriba a la derecha)."); return null; }
   if (ocupado) return null;
   const seguir = await dialogo({ titulo, texto: frase, botones: [
@@ -163,7 +163,7 @@ async function operar({ metodo, args, titulo, frase, boton, exito }) {
       { texto: "Ver comprobante ↗", href: `${CONFIG.explorer}/tx/${hash}` },
       { texto: "Cerrar", valor: true },
     ] });
-    irA(); // vuelve a leer todo del contrato
+    if (despues) despues(resultado); else irA(); // vuelve a leer todo del contrato
     return resultado;
   } catch (e) {
     console.error(e);
@@ -216,12 +216,15 @@ function irA() {
   if (actual === "inicio") mostrarNumeros();
   if (actual === "proyectos") mostrarProyectos();
   if (actual === "proyecto") mostrarFicha(Number(param));
+  if (actual === "publicar") mostrarPublicar();
 }
 
 // ---------- inicio: números generales ----------
+const esPrueba = (p) => (CONFIG.pruebas || []).includes(p.id);
+
 async function mostrarNumeros() {
   try {
-    const lista = await cargarTodos();
+    const lista = (await cargarTodos()).filter((p) => !esPrueba(p));
     const suma = (campo) => lista.reduce((s, p) => s + BigInt(p[campo]), 0n);
     const valores = [String(lista.length), plata(suma("recaudado")), plata(suma("liberado")), plata(suma("total_pagado"))];
     document.querySelectorAll("#numeros .numero b").forEach((b, i) => (b.textContent = valores[i]));
@@ -235,9 +238,13 @@ async function mostrarNumeros() {
 async function mostrarProyectos() {
   const caja = $("proyectos");
   try {
-    const lista = await cargarTodos();
-    if (!lista.length) { caja.innerHTML = `<div class="vacio">Todavía no hay proyectos. ¡Publicá el primero!</div>`; return; }
-    caja.innerHTML = lista.slice().reverse().map(tarjeta).join("");
+    const todos = (await cargarTodos()).slice().reverse();
+    const reales = todos.filter((p) => !esPrueba(p));
+    const pruebas = todos.filter(esPrueba);
+    caja.innerHTML = reales.length ? reales.map(tarjeta).join("") : `<div class="vacio">Todavía no hay proyectos. ¡Publicá el primero!</div>`;
+    $("pruebasCantidad").textContent = pruebas.length;
+    $("pruebasLista").innerHTML = pruebas.map(tarjeta).join("");
+    $("pruebasSistema").hidden = !pruebas.length;
   } catch (e) {
     console.error(e);
     caja.innerHTML = `<div class="vacio">No pudimos leer los proyectos: ${escapar(traducirError(e))}</div>`;
@@ -274,9 +281,10 @@ async function mostrarFicha(id) {
     ]);
     const yo = cuenta ? await datosMios(id) : null;
     if (mio !== pedido) return; // el usuario ya pidió otra cosa
-    fichaActual = { p, yo };
+    fichaActual = { p, yo, prometido: BigInt(prometido) };
     caja.innerHTML = `<div class="ficha">
       ${bloqueQueEs(p)}
+      ${bloqueDueno(p, yo, BigInt(prometido))}
       ${bloqueTuInversion(p, yo)}
       ${bloqueInvertir(p, yo)}
       ${bloqueEtapas(p)}
@@ -326,6 +334,63 @@ function bloqueTuInversion(p, yo) {
       ? `<p>${origen}</p><button data-accion="cobrar">Cobrar ${plata(yo.cobro)}</button>`
       : `<p class="nota">Por ahora no tenés nada para cobrar. Cuando el equipo devuelva plata, va a aparecer acá.</p>`}
   </div>`;
+}
+
+// ---------- tareas del dueño ----------
+function cuentaRegresiva(t) {
+  const resta = Number(t) - ahora();
+  if (resta < 0) return `<span class="cuenta-regresiva urgente">Venció el ${fecha(t)}</span>`;
+  const dias = Math.floor(resta / DIA);
+  const texto = dias >= 2 ? `Te quedan ${dias} días` : dias === 1 ? "Te queda 1 día" : `Te quedan ${Math.max(1, Math.floor(resta / 3600))} horas`;
+  return `<span class="cuenta-regresiva ${dias < 3 ? "urgente" : ""}">⏳ ${texto} (hasta el ${fecha(t)})</span>`;
+}
+
+function bloqueDueno(p, yo, prometido) {
+  if (!cuenta || p.dueno !== cuenta) return "";
+  const e = Number(p.estado); const n = Number(p.hito_actual);
+  const tareas = [];
+  if (e === 0) {
+    tareas.push(`<div class="tarea"><h4>Tu proyecto está juntando plata</h4>
+      <p>Lleva <b>${plata(p.recaudado)}</b> de <b>${plata(p.meta)}</b>. Se puede invertir hasta el ${fecha(p.plazo)}.</p>
+      <p class="nota">Compartí este link: <b>${escapar(location.origin + location.pathname)}#proyecto/${p.id}</b></p></div>`);
+  }
+  // Subir la prueba de las etapas cobradas que todavía no la tienen.
+  p.hitos.forEach((h, i) => {
+    if (!h.liberado || h.evidencia) return;
+    const vencida = ahora() > Number(h.fecha_limite);
+    tareas.push(vencida
+      ? `<div class="tarea"><h4>Etapa ${i + 1}: la prueba no se subió a tiempo</h4><p>Venció el ${fecha(h.fecha_limite)}. El proyecto se corta y los inversores pueden recuperar lo que quedaba.</p></div>`
+      : `<div class="tarea"><h4>Subí la prueba de la etapa ${i + 1}</h4>
+        <p>«${escapar(h.descripcion)}». ${cuentaRegresiva(h.fecha_limite)}</p>
+        <p class="nota">Pegá el link a la demo (un video o la app funcionando) o a tu repositorio de GitHub. Queda guardado para siempre y no se puede cambiar.${i + 1 < p.hitos.length ? " Hasta que la subas, los inversores no pueden votar la etapa siguiente." : ""}</p>
+        <div class="fila-accion"><input id="evidencia-${i}" placeholder="https://github.com/tu-usuario/tu-proyecto" autocomplete="off"><button data-accion="evidencia" data-hito="${i}">Subir la prueba</button></div></div>`);
+  });
+  // Cobrar la etapa en votación.
+  if (e === 1) {
+    const h = p.hitos[n];
+    const faltaPrueba = n > 0 && !p.hitos[n - 1].evidencia;
+    const si = pctDe(h.a_favor, p.recaudado);
+    if (!faltaPrueba) {
+      tareas.push(BigInt(h.a_favor) * 2n > BigInt(p.recaudado)
+        ? `<div class="tarea"><h4>¡Los inversores aprobaron la etapa ${n + 1}!</h4><p>«${escapar(h.descripcion)}»: ${si}% votó que sí. Ya podés cobrarla.</p><button data-accion="liberar">Cobrar la etapa ${n + 1} (${plata(h.monto)})</button></div>`
+        : `<div class="tarea"><h4>Etapa ${n + 1}: esperando votos</h4><p>Por ahora ${si}% votó que sí. Necesitás <b>más de la mitad</b> para cobrar. Contales a tus inversores qué van a hacer en esta etapa.</p></div>`);
+    }
+  }
+  // Devolver plata.
+  if (BigInt(p.liberado) > 0n) {
+    const pagado = BigInt(p.total_pagado);
+    const falta = prometido > pagado ? prometido - pagado : 0n;
+    const producto = esProducto(p);
+    tareas.push(`<div class="tarea"><h4>Devolver plata a los inversores</h4>
+      ${producto
+        ? `<p class="nota">En este proyecto devolvés con producto, fuera de Órbita. Si además querés devolver plata, podés hacerlo acá.</p>`
+        : `<p>Prometiste devolver <b>${plata(prometido)}</b> por las etapas cobradas. Ya devolviste <b>${plata(pagado)}</b>${falta > 0n ? `: te falta <b>${plata(falta)}</b>` : " ✓"}.</p>
+           <p>${falta > 0n ? cuentaRegresiva(p.fecha_devolucion) : `<span class="listo">✓ Ya cumpliste con lo prometido.</span> Si querés, podés devolver más.`}</p>`}
+      <div class="fila-accion"><input id="montoDevolver" inputmode="decimal" autocomplete="off" placeholder="Ej: 25" value="${falta > 0n ? aMoneda(falta).replace(/\./g, "") : ""}"><button data-accion="devolver">Devolver plata</button></div>
+      <p class="chico">El contrato lo reparte solo entre los inversores, según la parte de cada uno.${yo.saldo !== null ? ` Tenés ${plata(yo.saldo)} en tu billetera.` : ""}</p></div>`);
+  }
+  if (!tareas.length) tareas.push(`<p class="nota">No tenés nada pendiente en este proyecto.</p>`);
+  return `<div class="tarjeta bloque dueno"><h3>Sos el dueño de este proyecto</h3>${tareas.join("")}</div>`;
 }
 
 function bloqueQueEs(p) {
@@ -505,6 +570,47 @@ $("ficha").addEventListener("click", async (ev) => {
     });
   }
 
+  if (accion === "liberar") {
+    const n = Number(p.hito_actual); const h = p.hitos[n];
+    const comision = (BigInt(h.monto) * 200n) / 10000n; const neto = BigInt(h.monto) - comision;
+    return operar({
+      metodo: "liberar", args: [sv.u32(p.id)],
+      titulo: `Cobrar la etapa ${n + 1}`, boton: `Sí, cobrar ${plata(neto)}`,
+      frase: `Vas a cobrar la etapa ${n + 1} («${escapar(h.descripcion)}»): <b>${plata(h.monto)}</b>. Órbita se queda con el 2 % (<b>${plata(comision)}</b>) y a tu billetera llegan <b>${plata(neto)}</b>.<br><br>Después tenés hasta el <b>${fecha(h.fecha_limite)}</b> para subir la prueba de lo que hicieron (una demo o el link a GitHub). Si no la subís a tiempo, el proyecto se corta y los inversores recuperan lo que queda.`,
+      exito: (recibido) => `Cobraste la etapa ${n + 1}: llegaron <b>${plata(recibido)}</b> a tu billetera.<br><br>Acordate de subir la prueba antes del <b>${fecha(h.fecha_limite)}</b>.`,
+    });
+  }
+
+  if (accion === "evidencia") {
+    const i = Number(b.dataset.hito); const h = p.hitos[i];
+    const url = $(`evidencia-${i}`).value.trim();
+    if (!/^https?:\/\/\S+\.\S+/i.test(url)) return aviso("Pegá un link completo, que empiece con https:// (por ejemplo, el de tu repositorio de GitHub).");
+    if (bytes(url) > 300) return aviso("El link es muy largo (máximo 300 caracteres).");
+    return operar({
+      metodo: "cargar_evidencia", args: [sv.u32(p.id), sv.u32(i), S.nativeToScVal(url, { type: "string" })],
+      titulo: `Subir la prueba de la etapa ${i + 1}`, boton: "Sí, subir la prueba",
+      frase: `Vas a subir este link como prueba de la etapa ${i + 1}:<br><b style="overflow-wrap:anywhere">${escapar(url)}</b><br><br>Queda guardado para siempre en la blockchain y <b>no se puede cambiar</b>. Revisá que sea el correcto.`,
+      exito: () => `Subiste la prueba de la etapa ${i + 1}. Los inversores ya la pueden ver${i + 1 < p.hitos.length ? " y votar la etapa siguiente" : ""}.`,
+    });
+  }
+
+  if (accion === "devolver") {
+    const monto = aUnidades($("montoDevolver").value);
+    if (!monto || monto <= 0n) return aviso("Escribí cuánto querés devolver, por ejemplo 25.");
+    if (yo.saldo !== null && monto + 2n * UNIDAD > yo.saldo) return aviso(`No te alcanza: tenés ${plata(yo.saldo)} y tenés que dejar al menos 2 ${CONFIG.moneda} para comisiones.`);
+    const prometido = fichaActual.prometido; const pagado = BigInt(p.total_pagado);
+    const tarde = ahora() > Number(p.fecha_devolucion) && pagado < prometido && !p.incumplido && !esProducto(p);
+    return operar({
+      metodo: "pagar_retorno", args: [sv.u32(p.id), sv.address(cuenta), sv.i128(monto)],
+      titulo: "Devolver plata", boton: `Sí, devolver ${plata(monto)}`,
+      frase: `Vas a devolver <b>${plata(monto)}</b> a los inversores de ${titulo}.<br><br>El contrato lo reparte solo entre los inversores, según la parte de cada uno, y queda en el historial público.${tarde ? "<br><br><b>Ojo:</b> ya pasó la fecha de devolución, así que el proyecto va a quedar marcado como \"Incumplido\" aunque pagues ahora." : ""}`,
+      exito: (total) => {
+        const queda = prometido > BigInt(total) ? prometido - BigInt(total) : 0n;
+        return `Devolviste <b>${plata(monto)}</b>. En total ya devolviste <b>${plata(total)}</b>${esProducto(p) ? "." : queda > 0n ? `; te falta <b>${plata(queda)}</b>.` : ". ¡Cumpliste con todo lo prometido!"}`;
+      },
+    });
+  }
+
   if (accion === "cobrar") {
     return operar({
       metodo: "cobrar", args: [sv.u32(p.id), sv.address(cuenta)],
@@ -550,6 +656,227 @@ function bloqueVentas(p, ofertas) {
     ${lista}
   </div>`;
 }
+
+// ---------- publicar (formulario en 4 pasos) ----------
+const bytes = (t) => new TextEncoder().encode(String(t)).length;
+const DIA = 86400;
+const IMAGENES = [
+  { url: CONFIG.sitio + "img/software.svg", nombre: "Código" },
+  { url: CONFIG.sitio + "img/turnos.svg", nombre: "App de celular" },
+  { url: CONFIG.sitio + "img/apuntes.svg", nombre: "Plataforma web" },
+];
+const EJEMPLO_CONDICIONES = {
+  0: "Ej: Préstamo al 8 %: devolvemos lo invertido más un 8 % antes de la fecha de devolución, con lo que cobremos de publicidad.",
+  1: "Ej: Repartimos entre los inversores el 10 % de lo que cobremos por suscripciones durante los primeros 12 meses.",
+  2: "Ej: Repartimos el 20 % de las ganancias del primer año. Publicamos los números cada 3 meses en el README del repositorio.",
+  3: "Ej: Cada inversor recibe un año del plan premium gratis por cada 10 XLM invertidos.",
+};
+const aFechaInput = (t) => { const d = new Date(Number(t) * 1000); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const deFechaInput = (v) => { const [y, m, d] = String(v).split("-").map(Number); return y ? Math.floor(new Date(y, m - 1, d, 23, 59, 59).getTime() / 1000) : 0; };
+
+function borradorNuevo() {
+  const plazo = deFechaInput(aFechaInput(ahora() + 30 * DIA));
+  return {
+    paso: 1, titulo: "", descripcion: "", imagen: IMAGENES[0].url, tipo: 0, condiciones: "",
+    etapas: [{ desc: "", monto: "", minimo: "" }, { desc: "", monto: "", minimo: "" }],
+    plazo, fechas: [plazo + 45 * DIA, plazo + 90 * DIA], devolucion: plazo + 270 * DIA,
+  };
+}
+let borrador = (() => { try { return JSON.parse(localStorage.getItem("orbita-borrador")) || borradorNuevo(); } catch { return borradorNuevo(); } })();
+const guardarBorrador = () => { try { localStorage.setItem("orbita-borrador", JSON.stringify(borrador)); } catch {} };
+
+function mostrarPublicar() {
+  const caja = $("publicarContenido");
+  if (!cuenta) {
+    caja.innerHTML = `<div class="tarjeta"><h3>Primero conectá tu billetera</h3>
+      <p class="nota">El proyecto se publica a nombre de tu billetera: es la que va a recibir la plata de cada etapa. Si es tu primera vez, seguí los 3 pasos de "Cómo funciona".</p>
+      <div class="fila-accion"><button data-pub="conectar">Conectar billetera</button><a class="boton sec" href="#como-funciona">Ver los 3 pasos</a></div></div>`;
+    return;
+  }
+  const b = borrador;
+  const nombres = ["Tu proyecto", "Qué ofrecés", "Etapas", "Fechas"];
+  const indicador = `<ol class="pasos-form">${nombres.map((n, i) => `<li class="${i + 1 < b.paso ? "hecho" : i + 1 === b.paso ? "actual" : ""}">${i + 1 < b.paso ? "✓" : `${i + 1}.`} ${n}</li>`).join("")}</ol>`;
+  let cuerpo = "";
+  if (b.paso === 1) cuerpo = `
+    <h3>Paso 1: Tu proyecto</h3>
+    <label class="campo">Nombre del proyecto <span class="ayuda">Corto y claro. Ej: "App de turnos para kioscos del barrio".</span>
+      <input id="fTitulo" maxlength="80" value="${escapar(b.titulo)}" placeholder="Ej: Plataforma de apuntes para la facultad"></label>
+    <label class="campo">¿Qué van a hacer y quiénes son? <span class="ayuda">Contalo como se lo contarías a alguien que no sabe de programación. Ej: "Una app web para que los clientes saquen turno desde el celular. La hacemos 3 estudiantes de Sistemas."</span>
+      <textarea id="fDescripcion" maxlength="1000" placeholder="Ej: Un lugar para compartir apuntes y exámenes viejos de cada materia…">${escapar(b.descripcion)}</textarea></label>
+    <div class="campo">Imagen del proyecto <span class="ayuda">Elegí una o pegá el link a una imagen tuya (por ejemplo, una captura de pantalla subida a GitHub).</span>
+      <div class="opciones">${IMAGENES.map((im) => `<label class="opcion"><input type="radio" name="fImagen" value="${im.url}" ${b.imagen === im.url ? "checked" : ""}><img src="${im.url}" alt=""><strong>${im.nombre}</strong></label>`).join("")}</div>
+      <input id="fImagenPropia" placeholder="O pegá un link: https://…" value="${IMAGENES.some((im) => im.url === b.imagen) ? "" : escapar(b.imagen)}"></div>`;
+  if (b.paso === 2) cuerpo = `
+    <h3>Paso 2: Qué ofrecés a cambio</h3>
+    <div class="campo">¿Qué recibe quien invierte?
+      <div class="opciones">${[0, 1, 2, 3].map((t) => `<label class="opcion"><input type="radio" name="fTipo" value="${t}" ${b.tipo === t ? "checked" : ""}><strong>${TIPOS[t].nombre}</strong><span>${TIPOS[t].explica}</span></label>`).join("")}</div></div>
+    <label class="campo">Las condiciones, con tus palabras <span class="ayuda">Qué das, cuánto y cuándo. Esto lo leen los inversores antes de decidir.</span>
+      <textarea id="fCondiciones" maxlength="1000" placeholder="${escapar(EJEMPLO_CONDICIONES[b.tipo])}">${escapar(b.condiciones)}</textarea></label>`;
+  if (b.paso === 3) {
+    const producto = b.tipo === 3;
+    cuerpo = `
+    <h3>Paso 3: Las etapas</h3>
+    <p class="nota">Dividí el proyecto en etapas (hasta 10). Antes de cada etapa, los inversores votan si te pagan esa parte. Después mostrás la prueba: una demo y el link a tu código en GitHub.</p>
+    ${b.etapas.map((e, i) => `<div class="etapa-form">
+      <div class="cabeza"><strong>Etapa ${i + 1}</strong>${b.etapas.length > 1 ? `<button class="sec" data-pub="quitar" data-i="${i}" style="min-height:44px;padding:8px 16px;font-size:16px">Quitar</button>` : ""}</div>
+      <label class="campo">¿Qué van a hacer en esta etapa? <input data-etapa="desc" data-i="${i}" maxlength="120" value="${escapar(e.desc)}" placeholder="${i === 0 ? "Ej: Prototipo con login y pantalla principal" : "Ej: Lanzamiento y primeros 100 usuarios"}"></label>
+      <div class="dos">
+        <label class="campo">Plata que necesitan (${CONFIG.moneda}) <input data-etapa="monto" data-i="${i}" inputmode="decimal" value="${escapar(e.monto)}" placeholder="Ej: 150"></label>
+        <label class="campo">${producto ? "Unidades que se comprometen a entregar" : `Mínimo que se comprometen a devolver (${CONFIG.moneda})`} <input data-etapa="minimo" data-i="${i}" inputmode="decimal" value="${escapar(e.minimo)}" placeholder="${producto ? "Ej: 20" : "Ej: 165"}"></label>
+      </div></div>`).join("")}
+    ${b.etapas.length < 10 ? `<button class="sec" data-pub="agregar">+ Agregar otra etapa</button>` : ""}
+    <p class="destacado" id="fTotales"></p>`;
+  }
+  if (b.paso === 4) cuerpo = `
+    <h3>Paso 4: Las fechas</h3>
+    <label class="campo">¿Hasta cuándo se puede invertir? <span class="ayuda">Si para esa fecha no se juntó toda la plata, cada inversor recupera lo suyo.</span>
+      <input type="date" id="fPlazo" value="${aFechaInput(b.plazo)}"></label>
+    ${b.etapas.map((e, i) => `<label class="campo">Etapa ${i + 1} (${escapar(e.desc) || "sin nombre"}): mostrar la prueba hasta el <span class="ayuda">Después de cobrar la etapa, para esta fecha tenés que subir la demo y el link a GitHub. Si no, el proyecto se corta.</span>
+      <input type="date" data-fecha="${i}" value="${aFechaInput(b.fechas[i])}"></label>`).join("")}
+    <label class="campo">Fecha para devolver lo prometido <span class="ayuda">Para esta fecha tenés que haber devuelto el mínimo de las etapas que cobraste. Si no, el proyecto queda marcado "Incumplido".</span>
+      <input type="date" id="fDevolucion" value="${aFechaInput(b.devolucion)}"></label>`;
+  if (b.paso === 5) cuerpo = resumenPublicar();
+  const nav = b.paso <= 4
+    ? `<div class="navegacion-form">${b.paso > 1 ? `<button class="sec" data-pub="atras">← Volver</button>` : `<button class="sec" data-pub="borrar">Empezar de nuevo</button>`}<button data-pub="siguiente">${b.paso === 4 ? "Ver el resumen →" : "Siguiente →"}</button></div>`
+    : `<div class="navegacion-form"><button class="sec" data-pub="atras">← Corregir algo</button><button data-pub="publicar">Publicar en Stellar</button></div>`;
+  caja.innerHTML = `${b.paso <= 4 ? indicador : ""}<div class="tarjeta">${cuerpo}<p class="error-campo" id="fError" role="alert"></p>${nav}</div>`;
+  if (b.paso === 3) actualizarTotales();
+}
+
+function leerPaso() {
+  const b = borrador;
+  if (b.paso === 1) {
+    b.titulo = $("fTitulo").value.trim();
+    b.descripcion = $("fDescripcion").value.trim();
+    const propia = $("fImagenPropia").value.trim();
+    b.imagen = propia || document.querySelector('input[name="fImagen"]:checked')?.value || "";
+  }
+  if (b.paso === 2) {
+    b.tipo = Number(document.querySelector('input[name="fTipo"]:checked')?.value ?? 0);
+    b.condiciones = $("fCondiciones").value.trim();
+  }
+  if (b.paso === 3) document.querySelectorAll("[data-etapa]").forEach((el) => (b.etapas[Number(el.dataset.i)][el.dataset.etapa] = el.value.trim()));
+  if (b.paso === 4) {
+    b.plazo = deFechaInput($("fPlazo").value);
+    document.querySelectorAll("[data-fecha]").forEach((el) => (b.fechas[Number(el.dataset.fecha)] = deFechaInput(el.value)));
+    b.devolucion = deFechaInput($("fDevolucion").value);
+  }
+  guardarBorrador();
+}
+
+const minimoUnidades = (b, texto) => (b.tipo === 3 ? (/^\d+$/.test(String(texto).trim()) ? BigInt(String(texto).trim()) : null) : aUnidades(texto));
+
+// Devuelve el texto del error del paso, o "" si está todo bien. Usa los mismos límites que el contrato.
+function validarPaso(paso) {
+  const b = borrador;
+  if (paso === 1) {
+    if (!b.titulo) return "Escribí el nombre del proyecto.";
+    if (bytes(b.titulo) > 80) return "El nombre es muy largo: acortalo un poco.";
+    if (bytes(b.descripcion) > 1000) return "La descripción es muy larga: acortala un poco.";
+    if (b.imagen && !/^https?:\/\//i.test(b.imagen)) return "El link de la imagen tiene que empezar con https://";
+    if (bytes(b.imagen) > 300) return "El link de la imagen es muy largo.";
+  }
+  if (paso === 2) {
+    if (!b.condiciones) return "Escribí las condiciones: qué das, cuánto y cuándo.";
+    if (bytes(b.condiciones) > 1000) return "Las condiciones son muy largas: acortalas un poco.";
+  }
+  if (paso === 3) {
+    for (const [i, e] of b.etapas.entries()) {
+      if (!e.desc) return `Escribí qué van a hacer en la etapa ${i + 1}.`;
+      if (bytes(e.desc) > 120) return `La descripción de la etapa ${i + 1} es muy larga.`;
+      const m = aUnidades(e.monto);
+      if (!m || m <= 0n) return `Escribí cuánta plata necesitan en la etapa ${i + 1} (por ejemplo, 150).`;
+      const min = minimoUnidades(b, e.minimo || "0");
+      if (min === null || min < 0n) return `Revisá el mínimo de la etapa ${i + 1}: tiene que ser un número${b.tipo === 3 ? " entero de unidades" : ""}.`;
+    }
+  }
+  if (paso === 4) {
+    if (!b.plazo || b.plazo <= ahora()) return "La fecha para invertir tiene que ser futura.";
+    let anterior = b.plazo;
+    for (let i = 0; i < b.etapas.length; i++) {
+      if (!b.fechas[i] || b.fechas[i] <= anterior) return `La fecha de la etapa ${i + 1} tiene que ser posterior a ${i === 0 ? "la fecha para invertir" : `la de la etapa ${i}`}.`;
+      anterior = b.fechas[i];
+    }
+    if (!b.devolucion || b.devolucion <= anterior) return "La fecha para devolver tiene que ser posterior a la de la última etapa.";
+  }
+  return "";
+}
+
+function actualizarTotales() {
+  const b = borrador;
+  leerPaso();
+  const meta = b.etapas.reduce((s, e) => s + (aUnidades(e.monto) || 0n), 0n);
+  const prometido = b.etapas.reduce((s, e) => s + (minimoUnidades(b, e.minimo || "0") || 0n), 0n);
+  const el = $("fTotales");
+  if (!el) return;
+  if (b.tipo === 3) el.innerHTML = `Meta total: <b>${plata(meta)}</b>. Se comprometen a entregar <b>${prometido.toLocaleString("es-AR")} unidades</b> en total.`;
+  else el.innerHTML = `Meta total: <b>${plata(meta)}</b>. Se comprometen a devolver <b>${plata(prometido)}</b>${meta > 0n ? `: por cada 100 ${CONFIG.moneda} invertidos, <b>${((prometido * 100n) / meta).toLocaleString("es-AR")} ${CONFIG.moneda}</b>` : ""}.`;
+}
+
+function resumenPublicar() {
+  const b = borrador;
+  const meta = b.etapas.reduce((s, e) => s + aUnidades(e.monto), 0n);
+  const producto = b.tipo === 3;
+  return `<h3>Revisá antes de publicar</h3>
+    <p class="nota">Una vez publicado, el proyecto <b>no se puede editar</b>: queda guardado en la blockchain. Si algo está mal, tocá "Corregir algo".</p>
+    <div class="resumen"><dl>
+      <dt>Proyecto</dt><dd>${escapar(b.titulo)}</dd>
+      ${b.descripcion ? `<dt>Descripción</dt><dd>${escapar(b.descripcion)}</dd>` : ""}
+      <dt>A cambio</dt><dd>${TIPOS[b.tipo].nombre}: ${escapar(b.condiciones)}</dd>
+      <dt>Meta</dt><dd>${plata(meta)} · se puede invertir hasta el ${fecha(b.plazo)}</dd>
+      ${b.etapas.map((e, i) => `<dt>Etapa ${i + 1}</dt><dd>${escapar(e.desc)}: ${plata(aUnidades(e.monto))}. Promete ${producto ? `${minimoUnidades(b, e.minimo || "0")} unidades` : plata(minimoUnidades(b, e.minimo || "0"))}. Prueba hasta el ${fecha(b.fechas[i])}.</dd>`).join("")}
+      <dt>Devolución</dt><dd>Hasta el ${fecha(b.devolucion)}</dd>
+      ${b.imagen ? `<dt>Imagen</dt><dd><img src="${urlSegura(b.imagen)}" alt="" style="max-width:280px;border-radius:12px"></dd>` : ""}
+    </dl></div>`;
+}
+
+$("publicarContenido").addEventListener("input", (ev) => { if (ev.target.matches("[data-etapa]")) actualizarTotales(); });
+$("publicarContenido").addEventListener("change", (ev) => {
+  if (ev.target.name === "fImagen") $("fImagenPropia").value = "";
+  if (ev.target.name === "fTipo") { $("fCondiciones").placeholder = EJEMPLO_CONDICIONES[ev.target.value]; }
+});
+$("publicarContenido").addEventListener("click", async (ev) => {
+  const btn = ev.target.closest("[data-pub]");
+  if (!btn) return;
+  const b = borrador;
+  const accion = btn.dataset.pub;
+  if (accion === "conectar") return conectar();
+  if (accion !== "borrar" && b.paso <= 4) leerPaso();
+  if (accion === "siguiente") {
+    const error = validarPaso(b.paso);
+    if (error) { $("fError").textContent = error; return; }
+    b.paso += 1;
+  }
+  if (accion === "atras") b.paso -= 1;
+  if (accion === "agregar") { const ult = b.fechas[b.fechas.length - 1] || b.plazo; b.etapas.push({ desc: "", monto: "", minimo: "" }); b.fechas.push(ult + 45 * DIA); if (b.devolucion <= ult + 45 * DIA) b.devolucion = ult + 225 * DIA; }
+  if (accion === "quitar") { b.etapas.splice(Number(btn.dataset.i), 1); b.fechas.splice(Number(btn.dataset.i), 1); }
+  if (accion === "borrar") borrador = borradorNuevo();
+  if (accion === "publicar") {
+    for (const paso of [1, 2, 3, 4]) { const error = validarPaso(paso); if (error) { b.paso = paso; guardarBorrador(); mostrarPublicar(); $("fError").textContent = error; return; } }
+    const montos = b.etapas.map((e) => aUnidades(e.monto));
+    const meta = montos.reduce((s, m) => s + m, 0n);
+    const id = await operar({
+      metodo: "crear_proyecto",
+      args: [sv.address(cuenta), S.nativeToScVal(b.titulo, { type: "string" }), S.nativeToScVal(b.descripcion, { type: "string" }),
+        S.nativeToScVal(b.imagen, { type: "string" }), sv.u32(b.tipo), S.nativeToScVal(b.condiciones, { type: "string" }),
+        S.nativeToScVal(BigInt(b.plazo), { type: "u64" }),
+        S.xdr.ScVal.scvVec(b.etapas.map((e) => S.nativeToScVal(e.desc, { type: "string" }))),
+        S.xdr.ScVal.scvVec(montos.map(sv.i128)),
+        S.xdr.ScVal.scvVec(b.etapas.map((e) => sv.i128(minimoUnidades(b, e.minimo || "0")))),
+        S.xdr.ScVal.scvVec(b.fechas.slice(0, b.etapas.length).map((f) => S.nativeToScVal(BigInt(f), { type: "u64" }))),
+        S.nativeToScVal(BigInt(b.devolucion), { type: "u64" })],
+      titulo: "Confirmá la publicación", boton: "Sí, publicar",
+      frase: `Vas a publicar <b>«${escapar(b.titulo)}»</b> para juntar <b>${plata(meta)}</b> hasta el <b>${fecha(b.plazo)}</b>.<br><br>Queda guardado en la blockchain y no se puede editar. La plata de cada etapa va a llegar a esta billetera, cuando los inversores voten que sí.`,
+      exito: (nuevo) => `Tu proyecto <b>«${escapar(b.titulo)}»</b> ya está publicado (número ${nuevo}).<br><br>Compartí este link con quienes quieras que inviertan:<br><b>${escapar(location.origin + location.pathname)}#proyecto/${nuevo}</b>`,
+      despues: (nuevo) => { borrador = borradorNuevo(); guardarBorrador(); location.hash = `#proyecto/${nuevo}`; },
+    });
+    if (id === null) return;
+    return;
+  }
+  guardarBorrador();
+  mostrarPublicar();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
 
 // ---------- billetera ----------
 const esCelular = navigator.userAgentData?.mobile ?? /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
