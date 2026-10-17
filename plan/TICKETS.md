@@ -240,13 +240,13 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 
 ---
 
-## T4. Web: descripción, imagen, evidencia e inversión 🔄 (rediseño completo en 4 fases)
+## T4. Web: descripción, imagen, evidencia e inversión ✅ (rediseño completo en 4 fases)
 
 **Rediseño pedido el 17/10/2026** (reemplaza el alcance de abajo y suma el mercado): todas las funciones del contrato en la web, en lenguaje simple para una persona mayor, sobre el diseño de la rama `main` (tema oscuro y naranja).
 - **Fase 1** ✅ Barra, Inicio, Cómo funciona, Proyectos, Ficha (solo lectura) y Preguntas. Ver `plan/RESUMEN-WEB1.md`.
 - **Fase 2** ✅ Invertir, votar y cobrar. Ver `plan/RESUMEN-WEB2.md`.
 - **Fase 3** ✅ Publicar (formulario en 4 pasos), cobrar etapa, subir evidencia y devolver plata. Además: enfoque en software de estudiantes y proyectos de prueba separados. Ver `plan/RESUMEN-WEB3.md`.
-- **Fase 4** ⬜ Mi panel, partes en venta (ofrecer, cancelar, comprar) y "Actualizar estado".
+- **Fase 4** ✅ Mi panel, partes en venta (ofrecer, cancelar, comprar) y "Actualizar estado". Ver `plan/RESUMEN-WEB4.md`.
 
 ### Alcance original de T4
 
@@ -299,7 +299,7 @@ Diseño del contrato: ver `plan/ADR-001-inversion.md`.
 
 ---
 
-## T7. README actualizado y pasar v2 a main ⬜
+## T7. README actualizado y pasar v2 a main ✅ (README final para el jurado el 17/10/2026; v2 se publica en main después de cada fase)
 
 **Objetivo:** dejar v2 como la versión oficial.
 

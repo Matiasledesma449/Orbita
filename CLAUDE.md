@@ -24,6 +24,7 @@ El plan está en `plan/TICKETS.md`.
 - Cuentas de prueba del CLI: `dueno`, `ana`, `beto`, `orbita` (la plataforma, cobra la comisión del 2 %), `estudiante1` y `estudiante2` (dueños de los proyectos 5 y 6). Las claves viven en `~/.config/stellar`, nunca en el repo.
 - Enfoque (17/10/2026): Órbita es para **estudiantes con proyectos de software**; invierte cualquier persona o empresa de cualquier país. Los proyectos de prueba técnica van en `CONFIG.pruebas` (docs/config.js) y se muestran colapsados.
 - Diseño de inversión aprobado: `plan/ADR-001-inversion.md`.
-- Contrato v1 (en `main`): `CAACEJBBUWX4XGU7IPD7CMMYVCDLVZNDR5T2CIWSGNLPQTL3JTQ63HTZ`.
+- **Contrato actual** (web en `main` y `v2`, README): `CBN7TBFLY7O7HZWQOH2N34IEDRUIRVVGQM5YWY6UOR6N2O5KA4ZVQXZC`. Contrato v1 (tag `v1-estable`): `CAACEJBBUWX4XGU7IPD7CMMYVCDLVZNDR5T2CIWSGNLPQTL3JTQ63HTZ`.
+- Si cambia el contrato, actualizar a la vez `docs/config.js`, `README.md` y este archivo.
 - Si cambian funciones o argumentos del contrato, actualizar también `docs/app.js` y `scripts/deploy.sh`.
 - Nunca commitear claves secretas (`S...`), `target/`, `deploy.log` ni `.stellar/`.

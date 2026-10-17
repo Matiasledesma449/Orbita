@@ -70,7 +70,11 @@ async function leerDe(destino, metodo, ...args) {
   const origen = new Account(cuenta || Keypair.random().publicKey(), "0");
   const tx = new TransactionBuilder(origen, { fee: BASE_FEE, networkPassphrase: CONFIG.networkPassphrase })
     .addOperation(destino.call(metodo, ...args)).setTimeout(60).build();
-  const sim = await servidor.simulateTransaction(tx);
+  let sim;
+  for (let intento = 1; ; intento++) {
+    try { sim = await servidor.simulateTransaction(tx); break; }
+    catch (e) { if (intento >= 3) throw e; await new Promise((r) => setTimeout(r, 700 * intento)); } // falla de red: reintentar
+  }
   if (rpc.Api.isSimulationError(sim)) throw new Error(sim.error);
   return scValToNative(sim.result.retval);
 }
@@ -158,8 +162,12 @@ async function operar({ metodo, args, titulo, frase, boton, exito, despues }) {
     const final = await servidor.pollTransaction(hash, { attempts: 40 });
     if (final.status !== "SUCCESS") throw new Error(final.status === "NOT_FOUND" ? "tardó" : "La operación falló en la red. No se movió plata.");
     const resultado = final.returnValue ? scValToNative(final.returnValue) : null;
-    sesion.unshift({ metodo, titulo, hash, cuando: new Date() });
-    await dialogo({ titulo: "¡Listo!", icono: "ok", texto: exito(resultado), botones: [
+    const texto = exito(resultado);
+    const plano = document.createElement("div");
+    plano.innerHTML = texto.replace(/<br\s*\/?>/g, " ");
+    const quePaso = plano.textContent.split(/(?<=\.)\s/)[0];
+    sesion.unshift({ metodo, titulo: escapar(quePaso), hash, cuando: new Date() });
+    await dialogo({ titulo: "¡Listo!", icono: "ok", texto, botones: [
       { texto: "Ver comprobante ↗", href: `${CONFIG.explorer}/tx/${hash}` },
       { texto: "Cerrar", valor: true },
     ] });
@@ -217,6 +225,7 @@ function irA() {
   if (actual === "proyectos") mostrarProyectos();
   if (actual === "proyecto") mostrarFicha(Number(param));
   if (actual === "publicar") mostrarPublicar();
+  if (actual === "panel") mostrarPanel();
 }
 
 // ---------- inicio: números generales ----------
@@ -279,11 +288,12 @@ async function mostrarFicha(id) {
       Promise.all([...Array(Number(p.cantidad_pagos)).keys()].map((n) => leer("pago", sv.u32(id), sv.u32(n)))),
       Promise.all(p.vendedores.map(async (v) => ({ vendedor: v, ...(await leer("oferta", sv.u32(id), sv.address(v))) }))),
     ]);
-    const yo = cuenta ? await datosMios(id) : null;
+    const yo = cuenta ? await datosMios(id, p) : null;
     if (mio !== pedido) return; // el usuario ya pidió otra cosa
-    fichaActual = { p, yo, prometido: BigInt(prometido) };
-    caja.innerHTML = `<div class="ficha">
+    contextos.set(id, { p, yo, prometido: BigInt(prometido), ofertas });
+    caja.innerHTML = `<div class="ficha" data-proyecto="${id}">
       ${bloqueQueEs(p)}
+      ${bloqueActualizar(p, BigInt(prometido))}
       ${bloqueDueno(p, yo, BigInt(prometido))}
       ${bloqueTuInversion(p, yo)}
       ${bloqueInvertir(p, yo)}
@@ -304,16 +314,20 @@ async function mostrarFicha(id) {
   }
 }
 
-let fichaActual = null;
+// Datos del proyecto en pantalla (ficha o panel), para que los botones sepan sobre qué actuar.
+const contextos = new Map();
+const campo = (raiz, nombre) => raiz.querySelector(`[data-campo="${nombre}"]`);
 
-async function datosMios(id) {
-  const [pos, voto, cobro, saldo] = await Promise.all([
+async function datosMios(id, p) {
+  const miOferta = p && p.vendedores.includes(cuenta) ? leer("oferta", sv.u32(id), sv.address(cuenta)) : null;
+  const [pos, voto, cobro, saldo, oferta] = await Promise.all([
     leer("posicion", sv.u32(id), sv.address(cuenta)),
     leer("ya_voto", sv.u32(id), sv.address(cuenta)),
     cobrable(id),
     miSaldo().catch(() => null), // cuenta sin fondos todavía
+    miOferta,
   ]);
-  return { parte: BigInt(pos.participacion), yaVoto: voto, cobro, saldo };
+  return { parte: BigInt(pos.participacion), yaVoto: voto, cobro, saldo, oferta };
 }
 
 function bloqueTuInversion(p, yo) {
@@ -333,6 +347,59 @@ function bloqueTuInversion(p, yo) {
     ${yo.cobro > 0n
       ? `<p>${origen}</p><button data-accion="cobrar">Cobrar ${plata(yo.cobro)}</button>`
       : `<p class="nota">Por ahora no tenés nada para cobrar. Cuando el equipo devuelva plata, va a aparecer acá.</p>`}
+    ${bloqueVender(p, yo)}
+  </div>`;
+}
+
+function bloqueVender(p, yo) {
+  if (yo.parte === 0n) return "";
+  if (yo.oferta) {
+    return `<div class="tarea"><h4>Tu parte está en venta</h4>
+      <p>Ofreciste una parte de <b>${plata(yo.oferta.cantidad)}</b> a <b>${plata(yo.oferta.precio)}</b>. Cuando alguien la compre, te llega la plata.</p>
+      <button class="sec" data-accion="cancelar-venta">Cancelar la venta</button></div>`;
+  }
+  if (Number(p.estado) === 1 && yo.yaVoto) {
+    return `<p class="nota">Votaste la etapa que se está decidiendo: vas a poder vender tu parte cuando se resuelva.</p>`;
+  }
+  return `<details class="tarea"><summary style="font-size:19px">Vender mi parte</summary>
+    <p class="nota">Ponés en venta tu parte (o un pedazo) al precio que quieras. Quien la compre cobra desde ese momento lo que el equipo devuelva por esa parte. Lo que ganaste hasta la venta sigue siendo tuyo.</p>
+    <div class="dos" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+      <label class="campo">¿Cuánto de tu parte? (de ${plata(yo.parte)}) <input data-campo="ventaCantidad" inputmode="decimal" value="${aMoneda(yo.parte).replace(/\./g, "")}"></label>
+      <label class="campo">¿A qué precio? (${CONFIG.moneda}) <input data-campo="ventaPrecio" inputmode="decimal" placeholder="Ej: ${aMoneda(yo.parte).replace(/\./g, "")}"></label>
+    </div>
+    <button data-accion="vender">Poner en venta</button></details>`;
+}
+
+// ---------- vencimientos que el contrato todavía no registró ----------
+// En Stellar un contrato no "despierta" solo: si venció una fecha, alguien tiene que
+// llamar a `revisar` para que quede registrado. Esto detecta ese caso para mostrar
+// el botón "Actualizar estado". Devuelve el motivo en palabras, o "".
+function vencimientoPendiente(p, prometido) {
+  const t = ahora(); const e = Number(p.estado); const n = Number(p.hito_actual);
+  if (e === 0 && t > Number(p.plazo)) return `Se terminó el plazo para invertir (${fecha(p.plazo)}) sin juntar toda la plata.`;
+  if (e === 1 && n > 0) {
+    const h = p.hitos[n - 1];
+    if (!h.evidencia && t > Number(h.fecha_limite)) return `El equipo no mostró la prueba de la etapa ${n} antes del ${fecha(h.fecha_limite)}.`;
+  }
+  if (!p.incumplido) {
+    if (esProducto(p)) {
+      const i = p.hitos.findIndex((h) => h.liberado && !h.evidencia && t > Number(h.fecha_limite));
+      if (i >= 0) return `El equipo no mostró la prueba de la etapa ${i + 1} a tiempo.`;
+    } else if (t > Number(p.fecha_devolucion) && BigInt(p.total_pagado) < BigInt(prometido)) {
+      return `Pasó la fecha de devolución (${fecha(p.fecha_devolucion)}) y el equipo no devolvió todo lo prometido.`;
+    }
+  }
+  return "";
+}
+
+function bloqueActualizar(p, prometido) {
+  const motivo = vencimientoPendiente(p, prometido);
+  if (!motivo) return "";
+  return `<div class="tarjeta bloque" style="border-color:var(--naranja)">
+    <h3>⏰ Hay que actualizar el estado</h3>
+    <p>${motivo}</p>
+    <p class="nota">La blockchain todavía no lo registró. Cualquier persona puede actualizarlo: no mueve plata, solo deja registrado lo que pasó${cuenta ? "" : " (necesitás tu billetera conectada)"}.</p>
+    ${cuenta ? `<button data-accion="actualizar">Actualizar estado</button>` : `<button data-accion="conectar">Conectar billetera</button>`}
   </div>`;
 }
 
@@ -363,7 +430,7 @@ function bloqueDueno(p, yo, prometido) {
       : `<div class="tarea"><h4>Subí la prueba de la etapa ${i + 1}</h4>
         <p>«${escapar(h.descripcion)}». ${cuentaRegresiva(h.fecha_limite)}</p>
         <p class="nota">Pegá el link a la demo (un video o la app funcionando) o a tu repositorio de GitHub. Queda guardado para siempre y no se puede cambiar.${i + 1 < p.hitos.length ? " Hasta que la subas, los inversores no pueden votar la etapa siguiente." : ""}</p>
-        <div class="fila-accion"><input id="evidencia-${i}" placeholder="https://github.com/tu-usuario/tu-proyecto" autocomplete="off"><button data-accion="evidencia" data-hito="${i}">Subir la prueba</button></div></div>`);
+        <div class="fila-accion"><input data-campo="evidencia-${i}" placeholder="https://github.com/tu-usuario/tu-proyecto" autocomplete="off"><button data-accion="evidencia" data-hito="${i}">Subir la prueba</button></div></div>`);
   });
   // Cobrar la etapa en votación.
   if (e === 1) {
@@ -386,7 +453,7 @@ function bloqueDueno(p, yo, prometido) {
         ? `<p class="nota">En este proyecto devolvés con producto, fuera de Órbita. Si además querés devolver plata, podés hacerlo acá.</p>`
         : `<p>Prometiste devolver <b>${plata(prometido)}</b> por las etapas cobradas. Ya devolviste <b>${plata(pagado)}</b>${falta > 0n ? `: te falta <b>${plata(falta)}</b>` : " ✓"}.</p>
            <p>${falta > 0n ? cuentaRegresiva(p.fecha_devolucion) : `<span class="listo">✓ Ya cumpliste con lo prometido.</span> Si querés, podés devolver más.`}</p>`}
-      <div class="fila-accion"><input id="montoDevolver" inputmode="decimal" autocomplete="off" placeholder="Ej: 25" value="${falta > 0n ? aMoneda(falta).replace(/\./g, "") : ""}"><button data-accion="devolver">Devolver plata</button></div>
+      <div class="fila-accion"><input data-campo="montoDevolver" inputmode="decimal" autocomplete="off" placeholder="Ej: 25" value="${falta > 0n ? aMoneda(falta).replace(/\./g, "") : ""}"><button data-accion="devolver">Devolver plata</button></div>
       <p class="chico">El contrato lo reparte solo entre los inversores, según la parte de cada uno.${yo.saldo !== null ? ` Tenés ${plata(yo.saldo)} en tu billetera.` : ""}</p></div>`);
   }
   if (!tareas.length) tareas.push(`<p class="nota">No tenés nada pendiente en este proyecto.</p>`);
@@ -451,11 +518,11 @@ function formInvertir(p, yo, abierto, falta) {
   }
   if (!cuenta) return `<p class="nota">Para invertir, conectá tu billetera.</p><button data-accion="conectar">Conectar billetera para invertir</button>`;
   const atajos = [10n, 50n, 100n].map((n) => n * UNIDAD).filter((m) => m < falta);
-  return `<label for="montoInvertir">¿Cuánto querés invertir? (en ${CONFIG.moneda})</label>
+  return `<label>¿Cuánto querés invertir? (en ${CONFIG.moneda})</label>
     <div class="atajos">${atajos.map((m) => `<button class="sec" data-monto="${aMoneda(m).replace(/\./g, "")}">${plata(m)}</button>`).join("")}
       <button class="sec" data-monto="${aMoneda(falta).replace(/\./g, "")}">Todo lo que falta (${plata(falta)})</button></div>
     <div class="fila-accion">
-      <input id="montoInvertir" inputmode="decimal" autocomplete="off" placeholder="Ej: 25">
+      <input data-campo="montoInvertir" inputmode="decimal" autocomplete="off" placeholder="Ej: 25">
       <button data-accion="invertir">Invertir</button>
     </div>
     <p class="chico">${yo.saldo !== null ? `Tenés ${plata(yo.saldo)} en tu billetera. ` : ""}Dejá al menos 2 ${CONFIG.moneda} para las comisiones de la red.</p>`;
@@ -532,17 +599,20 @@ function botonesVoto(p, yo, faltaPrueba) {
 }
 
 // ---------- acciones de la ficha ----------
-$("ficha").addEventListener("click", async (ev) => {
+document.addEventListener("click", async (ev) => {
   const b = ev.target.closest("[data-accion], [data-monto]");
-  if (!b || !fichaActual) return;
-  const { p, yo } = fichaActual;
-  if (b.dataset.monto) { $("montoInvertir").value = b.dataset.monto; $("montoInvertir").focus(); return; }
+  const raiz = b?.closest("[data-proyecto]");
+  if (!b || !raiz) return;
+  const ctx = contextos.get(Number(raiz.dataset.proyecto));
+  if (!ctx) return;
+  const { p, yo } = ctx;
+  if (b.dataset.monto) { campo(raiz, "montoInvertir").value = b.dataset.monto; campo(raiz, "montoInvertir").focus(); return; }
   const accion = b.dataset.accion;
   const titulo = `«${escapar(p.titulo)}»`;
   if (accion === "conectar") return conectar();
 
   if (accion === "invertir") {
-    const monto = aUnidades($("montoInvertir").value);
+    const monto = aUnidades(campo(raiz, "montoInvertir").value);
     const falta = BigInt(p.meta) - BigInt(p.recaudado);
     if (!monto || monto <= 0n) return aviso("Escribí cuánto querés invertir, por ejemplo 25.");
     if (monto > falta) return aviso(`Al proyecto le faltan ${plata(falta)}: no podés invertir más que eso.`);
@@ -583,7 +653,7 @@ $("ficha").addEventListener("click", async (ev) => {
 
   if (accion === "evidencia") {
     const i = Number(b.dataset.hito); const h = p.hitos[i];
-    const url = $(`evidencia-${i}`).value.trim();
+    const url = campo(raiz, `evidencia-${i}`).value.trim();
     if (!/^https?:\/\/\S+\.\S+/i.test(url)) return aviso("Pegá un link completo, que empiece con https:// (por ejemplo, el de tu repositorio de GitHub).");
     if (bytes(url) > 300) return aviso("El link es muy largo (máximo 300 caracteres).");
     return operar({
@@ -595,10 +665,10 @@ $("ficha").addEventListener("click", async (ev) => {
   }
 
   if (accion === "devolver") {
-    const monto = aUnidades($("montoDevolver").value);
+    const monto = aUnidades(campo(raiz, "montoDevolver").value);
     if (!monto || monto <= 0n) return aviso("Escribí cuánto querés devolver, por ejemplo 25.");
     if (yo.saldo !== null && monto + 2n * UNIDAD > yo.saldo) return aviso(`No te alcanza: tenés ${plata(yo.saldo)} y tenés que dejar al menos 2 ${CONFIG.moneda} para comisiones.`);
-    const prometido = fichaActual.prometido; const pagado = BigInt(p.total_pagado);
+    const prometido = ctx.prometido; const pagado = BigInt(p.total_pagado);
     const tarde = ahora() > Number(p.fecha_devolucion) && pagado < prometido && !p.incumplido && !esProducto(p);
     return operar({
       metodo: "pagar_retorno", args: [sv.u32(p.id), sv.address(cuenta), sv.i128(monto)],
@@ -608,6 +678,55 @@ $("ficha").addEventListener("click", async (ev) => {
         const queda = prometido > BigInt(total) ? prometido - BigInt(total) : 0n;
         return `Devolviste <b>${plata(monto)}</b>. En total ya devolviste <b>${plata(total)}</b>${esProducto(p) ? "." : queda > 0n ? `; te falta <b>${plata(queda)}</b>.` : ". ¡Cumpliste con todo lo prometido!"}`;
       },
+    });
+  }
+
+  if (accion === "actualizar") {
+    const motivo = vencimientoPendiente(p, ctx.prometido);
+    return operar({
+      metodo: "revisar", args: [sv.u32(p.id)],
+      titulo: "Actualizar el estado", boton: "Sí, actualizar",
+      frase: `Vas a registrar en la blockchain lo que pasó con ${titulo}:<br><b>${motivo}</b><br><br>No mueve plata. Después, si te corresponde, vas a poder recuperar o cobrar tu parte.`,
+      exito: (estado) => {
+        const q = { ...p, estado };
+        return `Listo: el estado de ${titulo} quedó actualizado. Ahora dice: <b>${estadoTexto(q)}</b>.`;
+      },
+    });
+  }
+
+  if (accion === "vender") {
+    const cantidad = aUnidades(campo(raiz, "ventaCantidad").value);
+    const precio = aUnidades(campo(raiz, "ventaPrecio").value);
+    if (!cantidad || cantidad <= 0n) return aviso("Escribí cuánto de tu parte querés vender.");
+    if (cantidad > yo.parte) return aviso(`Tu parte es de ${plata(yo.parte)}: no podés vender más que eso.`);
+    if (!precio || precio <= 0n) return aviso("Escribí a qué precio la vendés, por ejemplo 25.");
+    return operar({
+      metodo: "ofrecer_venta", args: [sv.u32(p.id), sv.address(cuenta), sv.i128(cantidad), sv.i128(precio)],
+      titulo: "Poner tu parte en venta", boton: "Sí, poner en venta",
+      frase: `Vas a poner en venta una parte de <b>${plata(cantidad)}</b> (de tus ${plata(yo.parte)}) en ${titulo}, a <b>${plata(precio)}</b>.<br><br>Cuando alguien la compre, te llegan ${plata(precio)} y esa parte pasa a ser suya. Lo que ganaste hasta ese momento sigue siendo tuyo. Podés cancelar la venta mientras nadie la compre.`,
+      exito: () => `Tu parte de <b>${plata(cantidad)}</b> quedó en venta a <b>${plata(precio)}</b>. Aparece en "Partes en venta" de ${titulo}.`,
+    });
+  }
+
+  if (accion === "cancelar-venta") {
+    const o = yo?.oferta || ctx.ofertas?.find((x) => x.vendedor === cuenta);
+    return operar({
+      metodo: "cancelar_oferta", args: [sv.u32(p.id), sv.address(cuenta)],
+      titulo: "Cancelar la venta", boton: "Sí, cancelar la venta",
+      frase: `Vas a sacar de la venta tu parte${o ? ` de <b>${plata(o.cantidad)}</b>` : ""} en ${titulo}. La parte sigue siendo tuya.`,
+      exito: () => `Listo: tu parte ya no está en venta en ${titulo}.`,
+    });
+  }
+
+  if (accion === "comprar") {
+    const o = ctx.ofertas.find((x) => x.vendedor === b.dataset.vendedor);
+    if (!o) return aviso("Esa parte ya no está en venta.");
+    if (yo.saldo !== null && BigInt(o.precio) + 2n * UNIDAD > yo.saldo) return aviso(`No te alcanza: tenés ${plata(yo.saldo)} y tenés que dejar al menos 2 ${CONFIG.moneda} para comisiones.`);
+    return operar({
+      metodo: "comprar", args: [sv.u32(p.id), sv.address(cuenta), sv.address(o.vendedor), sv.i128(o.cantidad), sv.i128(o.precio)],
+      titulo: "Comprar una parte", boton: `Sí, comprar por ${plata(o.precio)}`,
+      frase: `Vas a comprar una parte de <b>${plata(o.cantidad)}</b> invertidos en ${titulo}, por <b>${plata(o.precio)}</b>.<br><br>Le pagás directamente a quien vende (${corto(o.vendedor)}). Desde ahora cobrás lo que el equipo devuelva por esa parte y votás con ella. Si el precio cambia antes de que firmes, la compra se cancela sola.`,
+      exito: () => `Compraste una parte de <b>${plata(o.cantidad)}</b> en ${titulo}. Ya la ves en "Tu inversión".`,
     });
   }
 
@@ -647,13 +766,126 @@ function bloquePagos(p, prometido, pagos) {
 }
 
 function bloqueVentas(p, ofertas) {
+  const fila = (o) => {
+    const mia = cuenta && o.vendedor === cuenta;
+    const boton = !cuenta ? "" : mia
+      ? `<button class="sec" data-accion="cancelar-venta" style="min-height:46px;padding:8px 18px;font-size:17px">Cancelar venta</button>`
+      : `<button data-accion="comprar" data-vendedor="${o.vendedor}" style="min-height:46px;padding:8px 18px;font-size:17px">Comprar</button>`;
+    return `<li style="align-items:center"><span>Una parte de <b>${plata(o.cantidad)}</b> invertidos · vende ${corto(o.vendedor)}${mia ? " <b>(vos)</b>" : ""}</span>
+      <span style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><b>Precio: ${plata(o.precio)}</b>${boton}</span></li>`;
+  };
   const lista = ofertas.length
-    ? `<ul class="historial">${ofertas.map((o) => `<li><span>Una parte de <b>${plata(o.cantidad)}</b> invertidos · vende ${corto(o.vendedor)}</span><b>Precio: ${plata(o.precio)}</b></li>`).join("")}</ul>`
+    ? `<ul class="historial">${ofertas.map(fila).join("")}</ul>${cuenta ? "" : `<p class="nota">Para comprar una parte, conectá tu billetera.</p>`}`
     : `<p class="nota">Nadie está vendiendo su parte en este momento.</p>`;
   return `<div class="tarjeta bloque">
     <h3>Partes en venta</h3>
     <p class="nota">Algunos inversores venden su parte. Si comprás una, pasás a cobrar lo que el equipo devuelva por esa parte.</p>
     ${lista}
+  </div>`;
+}
+
+// ---------- mi panel ----------
+async function mostrarPanel() {
+  const caja = $("panelContenido");
+  if (!cuenta) {
+    caja.innerHTML = `<div class="tarjeta"><h3>Conectá tu billetera para ver tu panel</h3>
+      <p class="nota">Acá vas a ver tus inversiones, tus proyectos y lo que te toca hacer hoy.</p>
+      <div class="fila-accion"><button data-pub="conectar" onclick="document.getElementById('btnConectar').click()">Conectar billetera</button><a class="boton sec" href="#como-funciona">¿Primera vez? Ver los 3 pasos</a></div></div>`;
+    return;
+  }
+  const mio = ++pedido;
+  caja.innerHTML = `<div class="vacio">Buscando tus inversiones y tus proyectos…</div>`;
+  try {
+    const todos = await cargarTodos();
+    // Primero, en qué proyectos participás (parte, cobro pendiente u oferta) o sos dueño.
+    const posiciones = await Promise.all(todos.map((p) => leer("posicion", sv.u32(p.id), sv.address(cuenta))));
+    const candidatos = todos.filter((p, i) => p.dueno === cuenta || BigInt(posiciones[i].participacion) > 0n || BigInt(posiciones[i].pendiente) > 0n || p.vendedores.includes(cuenta));
+    candidatos.sort((a, b) => Number(esPrueba(a)) - Number(esPrueba(b)) || b.id - a.id); // los reales primero
+    const datos = await Promise.all(candidatos.map(async (p) => {
+      const [yo, prometido, ofertas] = await Promise.all([
+        datosMios(p.id, p), leer("prometido", sv.u32(p.id)),
+        Promise.all(p.vendedores.map(async (v) => ({ vendedor: v, ...(await leer("oferta", sv.u32(p.id), sv.address(v))) }))),
+      ]);
+      const ctx = { p, yo, prometido: BigInt(prometido), ofertas };
+      contextos.set(p.id, ctx);
+      return ctx;
+    }));
+    const saldo = await miSaldo().catch(() => null);
+    if (mio !== pedido) return;
+    const inversiones = datos.filter((d) => d.yo.parte > 0n || d.yo.cobro > 0n || d.yo.oferta);
+    const proyectos = datos.filter((d) => d.p.dueno === cuenta);
+    caja.innerHTML = `<div class="panel">
+      ${bloqueHoy(datos)}
+      <div class="tarjeta"><h3>Tu billetera</h3>
+        <div class="datos"><div class="dato"><span>Dirección</span><b style="font-size:18px;overflow-wrap:anywhere">${cuenta}</b></div>
+        <div class="dato"><span>Saldo</span><b>${saldo === null ? "Sin fondos todavía" : plata(saldo)}</b></div></div>
+        <div class="fila-accion"><button class="sec" onclick="document.getElementById('btnFondear').click()">Cargar XLM de prueba</button><button class="sec" onclick="document.getElementById('btnCopiar').click()">Copiar dirección</button></div>
+      </div>
+      <h2>Mis inversiones</h2>
+      ${inversiones.length ? inversiones.map(itemInversion).join("") : `<div class="vacio">Todavía no invertiste en ningún proyecto. <a href="#proyectos">Ver proyectos</a></div>`}
+      <h2>Mis proyectos</h2>
+      ${proyectos.length ? proyectos.map(itemProyecto).join("") : `<div class="vacio">No publicaste ningún proyecto. <a href="#publicar">Publicar uno</a></div>`}
+      <h2>Lo que hiciste en esta visita</h2>
+      ${sesion.length
+        ? `<ul class="historial">${sesion.map((t) => `<li><span>${t.cuando.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })} · ${t.titulo}</span><a href="${CONFIG.explorer}/tx/${t.hash}" target="_blank" rel="noopener">Ver comprobante ↗</a></li>`).join("")}</ul>`
+        : `<div class="vacio">Todavía no firmaste ninguna operación en esta visita.</div>`}
+    </div>`;
+  } catch (e) {
+    console.error(e);
+    if (mio !== pedido) return;
+    caja.innerHTML = `<div class="vacio">No pudimos leer tu panel: ${escapar(traducirError(e))}</div>`;
+  }
+}
+
+const nombreProyecto = (p) => `<a href="#proyecto/${p.id}">«${escapar(p.titulo)}»</a>${esPrueba(p) ? ` <span class="etiqueta-prueba">(prueba del sistema)</span>` : ""}`;
+
+// Lista de cosas para hacer hoy, con el botón para hacerlas.
+function bloqueHoy(datos) {
+  const tareas = [];
+  for (const { p, yo, prometido } of datos) {
+    const n = Number(p.hito_actual); const e = Number(p.estado);
+    const envolver = (texto, boton) => tareas.push(`<li data-proyecto="${p.id}"><span>${texto}</span>${boton}</li>`);
+    const motivo = vencimientoPendiente(p, prometido);
+    if (motivo) envolver(`<b>Actualizá el estado</b> de ${nombreProyecto(p)}: ${motivo}`, `<button data-accion="actualizar">Actualizar estado</button>`);
+    if (yo.cobro > 0n) envolver(`Tenés <b>${plata(yo.cobro)}</b> para cobrar en ${nombreProyecto(p)}.`, `<button data-accion="cobrar">Cobrar ${plata(yo.cobro)}</button>`);
+    if (e === 1 && yo.parte > 0n && !yo.yaVoto && !(n > 0 && !p.hitos[n - 1].evidencia) && !motivo)
+      envolver(`<b>Votá</b> si se le paga la etapa ${n + 1} al equipo de ${nombreProyecto(p)}.`, `<a class="boton" href="#proyecto/${p.id}">Ir a votar</a>`);
+    if (p.dueno === cuenta) {
+      if (e === 1 && !(n > 0 && !p.hitos[n - 1].evidencia) && BigInt(p.hitos[n].a_favor) * 2n > BigInt(p.recaudado))
+        envolver(`Los inversores aprobaron la etapa ${n + 1} de ${nombreProyecto(p)}: <b>ya podés cobrarla</b>.`, `<button data-accion="liberar">Cobrar la etapa ${n + 1}</button>`);
+      p.hitos.forEach((h, i) => {
+        if (h.liberado && !h.evidencia && ahora() <= Number(h.fecha_limite))
+          envolver(`<b>Subí la prueba</b> de la etapa ${i + 1} de ${nombreProyecto(p)}. ${cuentaRegresiva(h.fecha_limite)}`, `<a class="boton" href="#proyecto/${p.id}">Subir la prueba</a>`);
+      });
+      const falta = prometido - BigInt(p.total_pagado);
+      if (BigInt(p.liberado) > 0n && falta > 0n && !esProducto(p))
+        envolver(`<b>Devolvé ${plata(falta)}</b> a los inversores de ${nombreProyecto(p)}. ${cuentaRegresiva(p.fecha_devolucion)}`, `<a class="boton" href="#proyecto/${p.id}">Devolver plata</a>`);
+    }
+  }
+  return `<div class="tarjeta hoy"><h3>Qué te toca hacer hoy</h3>
+    ${tareas.length ? `<ul>${tareas.join("")}</ul>` : `<p class="listo">✓ Hoy no tenés nada pendiente.</p>`}</div>`;
+}
+
+function itemInversion({ p, yo }) {
+  return `<div class="tarjeta item-panel" data-proyecto="${p.id}">
+    <div class="cabeza"><h3>${nombreProyecto(p)}</h3>${chips(p)}</div>
+    <div class="datos">
+      <div class="dato"><span>Tu parte</span><b>${plata(yo.parte)}</b></div>
+      <div class="dato"><span>Cuánto pesa tu voto</span><b>${pctDe(yo.parte, p.recaudado)}%</b></div>
+      <div class="dato"><span>Para cobrar ahora</span><b>${plata(yo.cobro)}</b></div>
+    </div>
+    <div class="fila-accion">${yo.cobro > 0n ? `<button data-accion="cobrar">Cobrar ${plata(yo.cobro)}</button>` : ""}<a class="boton sec" href="#proyecto/${p.id}">Ver el proyecto</a></div>
+    ${bloqueVender(p, yo)}
+  </div>`;
+}
+
+function itemProyecto({ p, yo, prometido }) {
+  return `<div class="item-panel" data-proyecto="${p.id}">
+    <div class="tarjeta item-panel">
+      <div class="cabeza"><h3>${nombreProyecto(p)}</h3>${chips(p)}</div>
+      <div class="linea"><span>Juntó ${plata(p.recaudado)} de ${plata(p.meta)}</span><span>Cobraste ${plata(p.liberado)} · devolviste ${plata(p.total_pagado)}</span></div>
+    </div>
+    ${bloqueDueno(p, yo, prometido)}
   </div>`;
 }
 

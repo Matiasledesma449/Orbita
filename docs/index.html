@@ -235,6 +235,18 @@
   .resumen dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
   .error-campo { color: var(--rojo); font-weight: 600; }
 
+  /* mi panel */
+  .panel { display: grid; gap: 24px; }
+  .hoy { border: 2px solid var(--naranja); background: rgba(255,107,26,.08); }
+  .hoy ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .hoy li { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; padding: 16px 18px; border-radius: 16px; background: rgba(0,0,0,.28); border: 1px solid var(--borde); }
+  .hoy li > span { flex: 1 1 320px; }
+  .hoy li .boton, .hoy li button { min-height: 50px; padding: 10px 20px; font-size: 17px; }
+  .item-panel { display: grid; gap: 14px; }
+  .item-panel .cabeza { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .item-panel .cabeza h3 { font-size: 24px; }
+  .etiqueta-prueba { font-size: 15px; color: var(--tenue); font-weight: 600; }
+
   /* dueño */
   .dueno { background: rgba(255,107,26,.08); border: 1.5px solid rgba(255,107,26,.55); }
   .tarea { display: grid; gap: 12px; padding: 18px; border-radius: 18px; background: rgba(0,0,0,.25); border: 1px solid var(--borde); }
@@ -426,7 +438,7 @@
       <h2>Mi panel</h2>
       <p>Tus inversiones, tus proyectos y lo que te toca hacer hoy.</p>
     </div>
-    <div class="vacio">Mi panel llega en la próxima versión de la web (fase 4).</div>
+    <div id="panelContenido"><div class="vacio">Cargando…</div></div>
   </section>
 
   <!-- ===================== PREGUNTAS ===================== -->
