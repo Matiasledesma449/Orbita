@@ -155,12 +155,14 @@ plan/                           tickets, diseño (ADR) y resumen de cada paso co
 
 ## Validación
 
-> Completar con los resultados de las entrevistas y la encuesta del evento.
-
-- Personas entrevistadas: **_N_**
-- Frases destacadas: _"..."_
-- ¿Usarían Órbita para financiar su proyecto? Promedio: **_X/10_**
-- Evidencia (fotos, audios, formulario): _link_
+Encuestamos a 8 estudiantes de programación (octubre 2026). Es una muestra chica que vamos a ampliar, pero confirma el problema:
+- **87 %** tiene un proyecto o una idea propia, pero el **62 %** nunca buscó plata para hacerlo.
+- Lo que más los frena: **la plata (62 %)**, la falta de conocimientos (37 %) y no tener equipo (37 %).
+- Si invirtieran en el proyecto de otro, el mayor miedo es que **gaste la plata en otra cosa (75 %)** y que **nunca lo termine (62 %)**. Es exactamente lo que resuelve Órbita: la plata se libera por etapas y solo si los inversores aprueban.
+- **Ninguno dijo que no** pondría plata en un proyecto así (62 % sí, 37 % tal vez).
+- Lo que prefieren recibir: **un % de lo que venda el proyecto (75 %)** o el producto (50 %).
+- Puntaje promedio para usar Órbita en su propio proyecto: **8,4 / 10** (nadie puso menos de 7).
+- Una respuesta: *"No sé a dónde buscar."*
 
 ## Qué hicimos durante el evento
 
