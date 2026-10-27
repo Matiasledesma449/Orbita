@@ -107,57 +107,38 @@
   .pagina[data-pagina="inicio"]::before, .pagina[data-pagina="inicio"]::after { content: ""; position: absolute; z-index: -1; pointer-events: none; width: 70vw; height: 46vh; filter: blur(46px); opacity: .55; }
   .pagina[data-pagina="inicio"]::before { left: -18vw; top: -16vh; transform: rotate(24deg); background: linear-gradient(90deg, transparent, rgba(255,255,255,.16) 45%, rgba(255,170,110,.12) 60%, transparent); }
   .pagina[data-pagina="inicio"]::after { right: -20vw; top: -12vh; transform: rotate(-26deg); background: linear-gradient(90deg, transparent, rgba(255,107,26,.30) 40%, rgba(255,255,255,.10) 60%, transparent); }
-  .portada { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; text-align: center; gap: clamp(8px, 1.5vh, 14px); }
+  .pagina[data-pagina="inicio"] { --t: clamp(84px, min(25vw, 45vh), 560px); }
   .insignia { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 10px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--suave);
     background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.03)); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(12px); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
   .insignia i { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--naranja); color: #fff; font-style: normal; font-size: 11px; font-weight: 800; box-shadow: 0 0 12px rgba(255,107,26,.7); }
-  .portada h1 { font-size: clamp(64px, min(15vw, 18.5vh), 240px); font-weight: 800; letter-spacing: -.035em; line-height: .88; text-transform: uppercase; padding-top: .14em; margin: calc(-.1em + clamp(0px, .4vh, 6px)) 0 clamp(2px, .6vh, 8px);
+  .pagina[data-pagina="inicio"] > .insignia { position: relative; z-index: 3; }
+  /* título gigante, por detrás del planeta */
+  .titulo-gigante { position: relative; z-index: 1; font-size: var(--t); font-weight: 800; letter-spacing: -.04em; line-height: .84; text-transform: uppercase; white-space: nowrap; text-align: center;
+    padding-top: .14em; margin: calc(-.08em + clamp(4px, 1vh, 12px)) 0 0;
     /* un solo degradado: naranja abajo a la derecha hasta blanco arriba a la izquierda */
-    background: linear-gradient(to top left, #e2540a 0%, #ff6b1a 16%, #ff9a55 36%, #ffd3b0 56%, #ffffff 74%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 10px 40px rgba(0,0,0,.5)); }
-  .portada p { margin: 0; font-size: clamp(17px, min(1.8vw, 2.7vh), 22px); color: var(--suave); font-weight: 500; max-width: 640px; line-height: 1.45; }
-  .portada p b { color: var(--tinta); font-weight: 600; }
-  .portada .cta { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: clamp(4px, 1.2vh, 14px); }
-  .portada .cta .boton { padding: 12px 18px 12px 24px; font-size: 17px; min-height: 50px; }
+    background: linear-gradient(to top left, #e2540a 0%, #ff6b1a 16%, #ff9a55 36%, #ffd3b0 56%, #ffffff 74%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  /* el planeta sube y tapa la parte de abajo del título */
+  .mundo { position: relative; z-index: 2; flex: 1; width: 100%; display: flex; flex-direction: column; align-items: center; margin-top: calc(var(--t) * -.30); min-height: clamp(200px, 35vh, 480px); }
+  #globo { position: absolute; left: 50%; transform: translateX(-50%); pointer-events: none;
+    --diam: max(min(1500px, 92vw), 560px); top: calc(var(--diam) * -.078); width: calc(var(--diam) * 1.116); height: calc(var(--diam) * 1.116); }
+  .sobre-globo { position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; text-align: center; gap: clamp(10px, 1.8vh, 18px);
+    padding: calc(var(--t) * .30 + clamp(22px, 4.5vh, 56px)) 16px 0; }
+  .sobre-globo::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 50%; width: min(900px, 120%); height: 160%; transform: translate(-50%, -42%);
+    background: radial-gradient(closest-side, rgba(12,11,12,.78), rgba(12,11,12,.45) 55%, transparent); pointer-events: none; }
+  .sobre-globo p { margin: 0; font-size: clamp(17px, min(1.8vw, 2.7vh), 22px); color: var(--suave); font-weight: 500; max-width: 640px; line-height: 1.45; }
+  .sobre-globo p b { color: var(--tinta); font-weight: 600; }
+  .sobre-globo .cta { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .sobre-globo .cta .boton { padding: 12px 18px 12px 24px; font-size: 17px; min-height: 50px; }
   .boton .flecha, .boton .play { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 15px; }
   .boton .flecha { background: rgba(0,0,0,.18); }
   .boton.sec .play { border: 1.5px solid currentColor; font-size: 10px; padding-left: 2px; }
   .boton.vidrio { background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.03)); color: var(--tinta); border: 1px solid rgba(255,255,255,.18); box-shadow: inset 0 1px 0 rgba(255,255,255,.1); backdrop-filter: blur(12px); }
   .boton.vidrio:hover { border-color: var(--naranja); color: var(--naranja-claro); }
 
-  /* escenario: globo + tarjetas flotantes */
-  .escenario { position: relative; flex: 1; width: 100%; max-width: 1400px; min-height: clamp(150px, 24vh, 380px); }
-  #globo { position: absolute; z-index: 0; left: 50%; bottom: calc(var(--visible) - var(--diam) * 1.058); transform: translateX(-50%); width: calc(var(--diam) * 1.116); height: calc(var(--diam) * 1.116); pointer-events: none;
-    --diam: min(1250px, 120vw, 170vh); --visible: calc(100% + 70px);
-    -webkit-mask-image: linear-gradient(180deg, #000 41%, rgba(0,0,0,.7) 50%, transparent 61%); mask-image: linear-gradient(180deg, #000 41%, rgba(0,0,0,.7) 50%, transparent 61%); }
-  .flotante { position: absolute; z-index: 3; top: clamp(-110px, -11vh, -30px); width: min(300px, 24vw); display: grid; gap: 10px; padding: 18px 20px; text-align: left; border-radius: 22px;
-    background: linear-gradient(180deg, rgba(40,38,40,.62), rgba(20,20,23,.55)); border: 1px solid rgba(255,255,255,.13); backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 24px 60px rgba(0,0,0,.5);
-    transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease, border-color .25s ease; }
-  .flotante:hover { transform: translateY(-6px); border-color: rgba(255,107,26,.7); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 0 1px rgba(255,107,26,.3), 0 14px 40px rgba(255,107,26,.25), 0 0 60px rgba(255,107,26,.15); }
-  .flotante.izq { left: clamp(0px, 2vw, 40px); }
-  .flotante.der { right: clamp(0px, 2vw, 40px); }
-  .flotante .rotulo { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--tenue); }
-  .en-vivo { display: inline-flex; align-items: center; gap: 6px; color: var(--verde); letter-spacing: 0; text-transform: none; font-size: 13px; }
-  .en-vivo::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--verde); box-shadow: 0 0 10px var(--verde); animation: latir 1.8s ease-in-out infinite; }
-  @keyframes latir { 50% { opacity: .35; } }
-  .flotante .numero b { display: block; font-size: clamp(30px, 4.4vh, 42px); font-weight: 800; letter-spacing: -.02em; line-height: 1.05; color: var(--tinta); font-variant-numeric: tabular-nums; }
-  .flotante .numero span { color: var(--suave); font-size: 15px; }
-  .flotante .fila-dato { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.1); }
-  .flotante .fila-dato span { color: var(--suave); font-size: 15px; }
-  .flotante .fila-dato b { font-size: 20px; color: var(--naranja-claro); font-variant-numeric: tabular-nums; }
-  .flotante .caja-dato { background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 10px 14px; }
-  .flotante .caja-dato small { display: block; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--tenue); }
-  .flotante .caja-dato b { font-size: clamp(22px, 3.2vh, 28px); }
-  .flotante .separador { display: grid; place-items: center; margin: -16px 0; position: relative; z-index: 1; }
-  .flotante .separador i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 14px; color: var(--tinta); background: #2a2829; border: 1px solid rgba(255,255,255,.14); }
-  .flotante .pie { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--tenue); flex-wrap: wrap; }
-  .flotante .pie .ok { color: var(--verde); font-weight: 600; }
-  .flotante .boton { min-height: 46px; padding: 10px 16px; font-size: 16px; width: 100%; justify-content: center; }
-
   .solo-celu { display: none; }
   @media (max-width: 640px) { .solo-pc { display: none; } .solo-celu { display: inline; } }
   /* franja inferior */
-  .franja { position: relative; z-index: 2; width: 100vw; padding: clamp(14px, 2.6vh, 30px) 0 clamp(8px, 1.6vh, 18px); text-align: center; background: linear-gradient(180deg, transparent, rgba(14,14,16,.82) 45%, rgba(14,14,16,.94)); }
+  .franja { position: relative; z-index: 4; width: 100vw; padding: clamp(14px, 2.6vh, 30px) 0 clamp(8px, 1.6vh, 18px); text-align: center; background: linear-gradient(180deg, transparent, rgba(14,14,16,.82) 45%, rgba(14,14,16,.94)); }
   .franja small { display: block; font-size: 11.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--tenue); margin-bottom: clamp(4px, 1vh, 10px); }
   .franja ul { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; flex-wrap: wrap; gap: clamp(18px, 4vw, 56px); }
   .franja li { font-size: clamp(16px, 1.5vw, 20px); font-weight: 800; letter-spacing: -.01em; color: rgba(255,255,255,.55); }
@@ -355,32 +336,13 @@
     h2, .ficha h2 { font-size: 30px; }
   }
   @media (max-width: 480px) { .pasos.cuatro { grid-template-columns: 1fr; } }
-  /* inicio en tablet y celular: las tarjetas pasan abajo del título, en fila */
-  @media (max-width: 1100px) {
-    .escenario { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-content: start; padding-top: clamp(10px, 2vh, 20px); min-height: 0; max-width: 760px; }
-    .flotante { position: relative; top: auto; left: auto !important; right: auto !important; width: auto; }
-    #globo { --diam: min(900px, 150vw, 110vh); bottom: calc(-.54 * var(--diam)); }
-  }
   @media (max-width: 640px) {
     .pagina[data-pagina="inicio"] { padding: 14px 14px 0; }
     .insignia { font-size: 12.5px; }
-    .portada p { font-size: 15.5px; }
-    .portada .cta { gap: 8px; flex-wrap: nowrap; }
-    .portada .cta .boton { padding: 10px 12px 10px 14px; font-size: 14.5px; min-height: 44px; white-space: nowrap; gap: 6px; }
+    .sobre-globo p { font-size: 15.5px; }
+    .sobre-globo .cta { gap: 8px; flex-wrap: nowrap; }
+    .sobre-globo .cta .boton { padding: 10px 12px 10px 14px; font-size: 14.5px; min-height: 44px; white-space: nowrap; gap: 6px; }
     .boton .flecha, .boton .play { width: 22px; height: 22px; }
-    .escenario { gap: 8px; }
-    .flotante { padding: 12px; gap: 8px; border-radius: 18px; }
-    .flotante .rotulo { font-size: 10.5px; flex-wrap: wrap; gap: 4px; }
-    .flotante .numero b { font-size: 26px; }
-    .flotante .numero span, .flotante .fila-dato span { font-size: 12.5px; }
-    .flotante .fila-dato { flex-direction: column; gap: 0; }
-    .flotante .fila-dato b { font-size: 17px; }
-    .flotante .caja-dato { padding: 8px 10px; } .flotante .caja-dato small { font-size: 10px; } .flotante .caja-dato b { font-size: 18px; }
-    .flotante .separador { margin: -12px 0; } .flotante .separador i { width: 24px; height: 24px; font-size: 12px; }
-    .flotante .pie { display: none; }
-    .flotante .numero span.desc { display: none; }
-    .flotante { gap: 6px; }
-    .flotante .boton { min-height: 40px; font-size: 14px; padding: 8px 10px; }
     .franja ul { gap: 14px; } .franja li { font-size: 14px; } .franja small { font-size: 10px; letter-spacing: .1em; }
   }
 </style>
@@ -420,34 +382,21 @@
 
   <!-- ===================== INICIO ===================== -->
   <section class="pagina" data-pagina="inicio">
-    <div class="portada">
-      <span class="insignia"><i>✓</i>Por etapas · Verificable · Sobre Stellar</span>
-      <h1>Órbita</h1>
-      <p>Una forma de financiar tus proyectos. <b>Para estudiantes con proyectos de software</b>; puede invertir cualquier persona o empresa, de cualquier país.</p>
-      <div class="cta">
-        <a class="boton" href="#proyectos">Quiero invertir <span class="flecha" aria-hidden="true">→</span></a>
-        <a class="boton sec vidrio" href="#publicar"><span class="play" aria-hidden="true">▶</span> <span class="solo-pc">Quiero financiar mi proyecto</span><span class="solo-celu">Financiar mi proyecto</span></a>
-      </div>
-    </div>
-
-    <div class="escenario" id="numeros">
+    <span class="insignia"><i>✓</i>Por etapas · Verificable · Sobre Stellar</span>
+    <h1 class="titulo-gigante">Órbita</h1>
+    <div class="mundo">
       <canvas id="globo" aria-hidden="true"></canvas>
-      <div class="flotante izq">
-        <div class="rotulo">Proyectos publicados <span class="en-vivo">En vivo</span></div>
-        <div class="numero"><b>…</b><span class="desc">proyectos de estudiantes en Órbita</span></div>
-        <div class="fila-dato numero"><span>Plata invertida</span><b>…</b></div>
-      </div>
-      <div class="flotante der">
-        <div class="caja-dato numero"><small>Pagado a los equipos</small><b>…</b></div>
-        <div class="separador" aria-hidden="true"><i>↓</i></div>
-        <div class="caja-dato numero"><small>Devuelto a los inversores</small><b>…</b></div>
-        <div class="pie"><span>Comisión: 2 % por etapa</span><span class="ok">Invertir: sin costo ✓</span></div>
-        <a class="boton" href="#proyectos">Ver proyectos <span class="flecha" aria-hidden="true">→</span></a>
+      <div class="sobre-globo">
+        <p>Una forma de financiar tus proyectos. <b>Para estudiantes con proyectos de software</b>; puede invertir cualquier persona o empresa, de cualquier país.</p>
+        <div class="cta">
+          <a class="boton" href="#proyectos">Quiero invertir <span class="flecha" aria-hidden="true">→</span></a>
+          <a class="boton sec vidrio" href="#publicar"><span class="play" aria-hidden="true">▶</span> <span class="solo-pc">Quiero financiar mi proyecto</span><span class="solo-celu">Financiar mi proyecto</span></a>
+        </div>
       </div>
     </div>
 
     <div class="franja">
-      <small>Números en vivo de la red de prueba de Stellar · Construido con</small>
+      <small>Construido con</small>
       <ul><li>Stellar</li><li>Soroban</li><li>Freighter</li><li>Rust</li><li>GitHub</li></ul>
     </div>
   </section>
