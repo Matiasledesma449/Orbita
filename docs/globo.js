@@ -1,0 +1,180 @@
+// Globo de puntos para el Inicio: continentes en puntitos naranjas, arcos que salen de
+// Argentina hacia el mundo (estudiantes de acá, inversores de cualquier país).
+// No usa librerías ni datos externos: los continentes son contornos simplificados.
+
+const CONTINENTES = [
+  // América del Norte
+  [[-168,66],[-162,70],[-140,70],[-125,70],[-95,72],[-80,73],[-62,60],[-56,52],[-66,45],[-70,42],[-76,35],[-81,30],[-80,25],[-82,27],[-84,30],[-90,29],[-97,27],[-97,22],[-94,18],[-88,21],[-87,15],[-83,10],[-79,8],[-82,8],[-86,12],[-92,15],[-105,20],[-110,24],[-112,30],[-117,32],[-121,36],[-124,40],[-124,48],[-130,55],[-140,59],[-152,58],[-158,56],[-165,60]],
+  // Groenlandia
+  [[-73,78],[-60,82],[-30,83],[-20,75],[-22,70],[-40,65],[-44,60],[-52,64],[-58,70],[-68,76]],
+  // América del Sur
+  [[-80,9],[-75,11],[-62,11],[-52,5],[-50,0],[-44,-2],[-35,-5],[-35,-9],[-39,-14],[-41,-22],[-48,-26],[-53,-34],[-58,-38],[-62,-39],[-65,-42],[-66,-47],[-69,-51],[-68,-55],[-73,-53],[-75,-46],[-73,-38],[-71,-30],[-70,-18],[-76,-14],[-81,-6],[-80,-2],[-78,2],[-77,8]],
+  // Europa y Asia
+  [[-10,36],[-9,43],[-2,44],[-5,48],[2,51],[5,53],[8,57],[5,62],[14,68],[25,71],[40,68],[45,68],[60,70],[70,73],[80,73],[100,77],[115,74],[130,72],[140,72],[160,70],[170,70],[180,66],[178,62],[163,59],[162,54],[156,51],[155,58],[142,59],[135,54],[141,48],[130,42],[127,39],[129,35],[126,35],[122,40],[119,38],[122,31],[120,25],[115,22],[108,21],[106,17],[109,12],[105,9],[100,13],[100,7],[103,1],[98,8],[98,16],[94,17],[92,22],[87,22],[80,15],[77,8],[73,16],[72,21],[66,25],[57,26],[56,24],[59,22],[52,16],[44,12],[42,15],[39,21],[35,28],[34,31],[36,35],[30,36],[27,37],[26,40],[23,40],[22,37],[19,42],[14,45],[12,44],[18,40],[15,38],[10,44],[5,43],[3,42],[-1,37],[-6,36]],
+  // África
+  [[-17,21],[-13,28],[-9,32],[-6,36],[0,36],[10,37],[11,33],[20,31],[25,32],[32,31],[34,28],[38,22],[43,12],[51,12],[48,5],[41,-2],[40,-11],[35,-20],[33,-27],[27,-34],[20,-35],[17,-29],[12,-17],[13,-8],[9,-1],[9,4],[5,6],[-4,5],[-8,4],[-13,8],[-17,14]],
+  // Australia
+  [[114,-22],[114,-34],[118,-35],[124,-34],[131,-31],[138,-35],[141,-38],[147,-38],[150,-37],[153,-31],[153,-25],[146,-19],[142,-11],[136,-12],[136,-15],[130,-12],[125,-15],[122,-18]],
+  // Islas grandes
+  [[-5,50],[1,51],[2,53],[-1,55],[-2,58],[-5,58],[-6,56],[-3,54],[-5,52]],
+  [[-24,64],[-14,64],[-14,66.5],[-22,66.5]],
+  [[130,31],[135,34],[140,35],[142,40],[141,45],[144,44],[140,41],[136,37],[132,34]],
+  [[109,1],[110,-3],[116,-4],[119,1],[117,7],[113,3]],
+  [[95,5],[98,4],[104,-2],[106,-6],[102,-4],[97,1]],
+  [[131,-1],[141,-2],[150,-6],[147,-9],[141,-9],[137,-5]],
+  [[44,-25],[47,-25],[50,-15],[49,-12],[44,-17]],
+  [[172,-34],[178,-38],[174,-41],[167,-46],[172,-42]],
+  [[120,18],[122,18],[126,7],[122,7]],
+];
+
+// Corrientes y Buenos Aires hacia el mundo
+const ORIGENES = [[-58.8, -27.5], [-58.4, -34.6]];
+const DESTINOS = [[-3.7, 40.4], [-74, 40.7], [-46.6, -23.5], [-99.1, 19.4], [-0.1, 51.5], [13.4, 52.5], [-122.4, 37.8], [-70.6, -33.4], [-74.1, 4.7], [3.4, 6.5], [18.4, -33.9]];
+
+const RAD = Math.PI / 180;
+
+function dentro([lon, lat], poli) {
+  let si = false;
+  for (let i = 0, j = poli.length - 1; i < poli.length; j = i++) {
+    const [xi, yi] = poli[i], [xj, yj] = poli[j];
+    if ((yi > lat) !== (yj > lat) && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) si = !si;
+  }
+  return si;
+}
+
+function puntosDeTierra(paso) {
+  const lista = [];
+  for (let lat = -58; lat <= 82; lat += paso) {
+    const pasoLon = paso / Math.max(Math.cos(lat * RAD), 0.2);
+    for (let lon = -180; lon < 180; lon += pasoLon) {
+      if (CONTINENTES.some((p) => dentro([lon, lat], p))) lista.push(aVector(lon, lat));
+    }
+  }
+  return lista;
+}
+
+function aVector(lon, lat) {
+  const l = lon * RAD, f = lat * RAD;
+  return [Math.cos(f) * Math.sin(l), Math.sin(f), Math.cos(f) * Math.cos(l)];
+}
+
+function arco(a, b, n = 48) {
+  const va = aVector(...a), vb = aVector(...b);
+  const ang = Math.acos(Math.min(1, va[0] * vb[0] + va[1] * vb[1] + va[2] * vb[2]));
+  const s = Math.sin(ang) || 1;
+  const puntos = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const k1 = Math.sin((1 - t) * ang) / s, k2 = Math.sin(t * ang) / s;
+    const alto = 1 + Math.sin(Math.PI * t) * (0.03 + ang * 0.035);
+    puntos.push([(k1 * va[0] + k2 * vb[0]) * alto, (k1 * va[1] + k2 * vb[1]) * alto, (k1 * va[2] + k2 * vb[2]) * alto]);
+  }
+  return puntos;
+}
+
+export function iniciarGlobo(lienzo) {
+  const ctx = lienzo.getContext("2d");
+  if (!ctx) return;
+  const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const tierra = puntosDeTierra(1.05);
+  const arcos = [];
+  DESTINOS.forEach((d, i) => arcos.push({ puntos: arco(ORIGENES[i % 2], d), fase: i / DESTINOS.length }));
+  const nodos = [...ORIGENES, ...DESTINOS].map((p, i) => ({ v: aVector(...p), origen: i < ORIGENES.length }));
+
+  let ancho = 0, alto = 0, dpr = 1, giro = -22, cuadro = 0;
+  const inclinacion = -31 * RAD; // Argentina queda cerca del centro y los arcos suben hacia el norte
+
+  function medir() {
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    const r = lienzo.getBoundingClientRect();
+    ancho = r.width; alto = r.height;
+    lienzo.width = Math.round(ancho * dpr); lienzo.height = Math.round(alto * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function proyectar([x, y, z], R, cx, cy) {
+    const g = giro * RAD;
+    const x1 = x * Math.cos(g) - z * Math.sin(g);
+    const z1 = x * Math.sin(g) + z * Math.cos(g);
+    const y2 = y * Math.cos(inclinacion) - z1 * Math.sin(inclinacion);
+    const z2 = y * Math.sin(inclinacion) + z1 * Math.cos(inclinacion);
+    return [cx + x1 * R, cy - y2 * R, z2];
+  }
+
+  function dibujar(t) {
+    if (!ancho) return;
+    const R = ancho * 0.48, cx = ancho / 2, cy = alto / 2;
+    ctx.clearRect(0, 0, ancho, alto);
+
+    // brillo de la atmósfera
+    const halo = ctx.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.12);
+    halo.addColorStop(0, "rgba(255,107,26,0.35)");
+    halo.addColorStop(0.35, "rgba(255,107,26,0.12)");
+    halo.addColorStop(1, "rgba(255,107,26,0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(cx, cy, R * 1.12, 0, Math.PI * 2); ctx.fill();
+
+    // esfera oscura con luz arriba
+    const esfera = ctx.createRadialGradient(cx, cy - R * 0.55, R * 0.1, cx, cy, R);
+    esfera.addColorStop(0, "#2a1a12"); esfera.addColorStop(0.6, "#151312"); esfera.addColorStop(1, "#0d0d0f");
+    ctx.fillStyle = esfera;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(255,150,90,0.45)"; ctx.lineWidth = 1.2; ctx.stroke();
+
+    // continentes en puntos
+    const tam = Math.max(1.3, R / 250);
+    for (const p of tierra) {
+      const [x, y, z] = proyectar(p, R, cx, cy);
+      if (z <= 0.02) continue;
+      const luz = Math.min(1, z * 1.3);
+      ctx.fillStyle = `rgba(255,${125 + Math.round(75 * luz)},${80 + Math.round(70 * luz)},${0.22 + 0.7 * luz})`;
+      ctx.beginPath(); ctx.arc(x, y, (tam / 2) * (0.7 + 0.3 * luz), 0, Math.PI * 2); ctx.fill();
+    }
+
+    // arcos con una luz que viaja
+    ctx.lineCap = "round";
+    for (const a of arcos) {
+      const pts = a.puntos.map((p) => proyectar(p, R, cx, cy));
+      ctx.beginPath();
+      let dibujando = false;
+      for (const [x, y, z] of pts) {
+        if (z > -0.05) { dibujando ? ctx.lineTo(x, y) : ctx.moveTo(x, y); dibujando = true; } else dibujando = false;
+      }
+      ctx.strokeStyle = "rgba(255,140,60,0.55)"; ctx.lineWidth = 1.4;
+      ctx.shadowColor = "rgba(255,107,26,0.9)"; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
+      const k = (t / 4200 + a.fase) % 1;
+      const [x, y, z] = pts[Math.floor(k * (pts.length - 1))];
+      if (z > 0) {
+        ctx.fillStyle = "#ffe2c8"; ctx.shadowColor = "#ff6b1a"; ctx.shadowBlur = 14;
+        ctx.beginPath(); ctx.arc(x, y, 2.4, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+      }
+    }
+
+    // ciudades que laten
+    for (const n of nodos) {
+      const [x, y, z] = proyectar(n.v, R, cx, cy);
+      if (z <= 0) continue;
+      const pulso = (Math.sin(t / 500 + x) + 1) / 2;
+      const r = (n.origen ? 4.2 : 2.8) * (0.85 + 0.3 * pulso);
+      ctx.fillStyle = n.origen ? "#ffffff" : "#ffb27a";
+      ctx.shadowColor = "#ff6b1a"; ctx.shadowBlur = n.origen ? 22 : 12;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+    }
+  }
+
+  function bucle(t) {
+    cuadro = requestAnimationFrame(bucle);
+    if (document.hidden || lienzo.offsetParent === null) return;
+    giro = -22 + 14 * Math.sin(t / 26000); // vaivén suave entre América, Europa y África
+    dibujar(t);
+  }
+
+  medir();
+  addEventListener("resize", () => { medir(); dibujar(performance.now()); });
+  if (quieto) dibujar(1200);
+  else cuadro = requestAnimationFrame(bucle);
+  return () => cancelAnimationFrame(cuadro);
+}
+
+const lienzo = document.getElementById("globo");
+if (lienzo) iniciarGlobo(lienzo);
