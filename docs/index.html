@@ -46,19 +46,23 @@
   .envoltura { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
 
   /* ---------- barra fija ---------- */
-  header { position: sticky; top: 0; z-index: 20; background: rgba(16,16,18,.62); backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%); border-bottom: 1px solid rgba(255,255,255,.07); }
-  header .barra-sup { max-width: 1480px; margin: 0 auto; padding: 0 32px; height: 80px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 20px; }
-  .marca { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 26px; color: var(--tinta); text-decoration: none; }
-  .marca svg { width: 34px; height: 34px; }
-  .nav { justify-self: center; display: flex; gap: 4px; padding: 5px; border-radius: 999px; background: var(--vidrio-fondo); border: 1px solid var(--vidrio-borde); box-shadow: inset 0 1px 0 rgba(255,255,255,.07); }
-  .nav a { color: var(--suave); text-decoration: none; font-weight: 600; font-size: 17px; padding: 10px 16px; border-radius: 999px; white-space: nowrap; }
-  .nav a:hover { color: var(--tinta); background: rgba(255,255,255,.08); }
-  .nav a.activo { color: #fff; background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.06)); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 0 0 1px rgba(255,107,26,.55), 0 0 18px rgba(255,107,26,.35); }
+  /* barra integrada a la página (sin franja aparte): transparente arriba; al bajar, un vidrio muy suave */
+  header { position: sticky; top: 0; z-index: 20; background: transparent; border-bottom: 1px solid transparent; transition: background .3s, border-color .3s, backdrop-filter .3s; }
+  header.con-fondo { background: rgba(16,16,18,.55); backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%); border-bottom-color: rgba(255,255,255,.06); }
+  header .barra-sup { max-width: 1200px; margin: 0 auto; padding: 0 24px; height: 56px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 28px; }
+  .marca { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 19px; color: var(--tinta); text-decoration: none; opacity: .92; }
+  .marca:hover { opacity: 1; }
+  .marca svg { width: 24px; height: 24px; }
+  .nav { justify-self: stretch; display: flex; justify-content: space-evenly; gap: 8px; }
+  .nav a { position: relative; color: rgba(244,244,246,.72); text-decoration: none; font-weight: 500; font-size: 15px; padding: 8px 4px; white-space: nowrap; transition: color .2s; }
+  .nav a:hover { color: #fff; }
+  .nav a.activo { color: #fff; }
+  .nav a.activo::after { content: ""; position: absolute; left: 50%; bottom: 0; width: 5px; height: 5px; border-radius: 50%; transform: translateX(-50%); background: var(--naranja); box-shadow: 0 0 10px var(--naranja); }
   .acciones-sup { display: flex; align-items: center; gap: 10px; }
-  .github { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%; color: #c9cbd2; border: 1.5px solid var(--borde); flex: none; }
+  .github { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: #c9cbd2; border: 1.5px solid var(--borde); flex: none; }
   .github:hover { color: var(--naranja); border-color: var(--naranja); }
-  .github svg { width: 20px; height: 20px; }
-  .menu-btn { display: none; background: transparent; border: 1.5px solid var(--borde); box-shadow: none; padding: 10px 16px; font-size: 22px; line-height: 1; }
+  .github svg { width: 17px; height: 17px; }
+  .menu-btn { display: none; background: transparent; border: 0; box-shadow: none; padding: 6px 8px; min-height: 36px; font-size: 21px; line-height: 1; color: var(--tinta); }
 
   /* ---------- botones ---------- */
   button, .boton { font: inherit; font-size: 18px; font-weight: 700; border: 0; border-radius: 999px; padding: 15px 28px; cursor: pointer; min-height: 54px;
@@ -81,7 +85,7 @@
   .menu-billetera .item { width: 100%; justify-content: flex-start; background: transparent; box-shadow: none; color: var(--tinta); font-weight: 600; font-size: 18px; padding: 12px 14px; border-radius: 12px; min-height: 50px; }
   .menu-billetera .item:hover { background: rgba(255,255,255,.07); transform: none; filter: none; }
   .menu-billetera .item.rojo { color: var(--rojo); }
-  header button { min-height: 48px; padding: 11px 20px; font-size: 17px; white-space: nowrap; }
+  header button { min-height: 36px; padding: 7px 16px; font-size: 14.5px; white-space: nowrap; box-shadow: none; }
 
   /* ---------- páginas ---------- */
   .pagina { padding: 40px 0 56px; }
@@ -102,7 +106,8 @@
 
   /* ---------- inicio: título enorme, globo de puntos y tarjetas de vidrio ---------- */
   .pagina[data-pagina="inicio"] { position: relative; width: 100vw; margin-left: calc(50% - 50vw); overflow: hidden; isolation: isolate;
-    min-height: calc(100svh - var(--alto-header, 82px)); padding: clamp(14px, 3.2vh, 40px) 24px 0; display: flex; flex-direction: column; align-items: center; }
+    /* empieza por detrás de la barra de arriba, así la barra queda integrada a la portada */
+    margin-top: calc(-1 * var(--alto-header, 56px)); min-height: 100svh; padding: calc(var(--alto-header, 56px) + clamp(14px, 3.2vh, 40px)) 24px 0; display: flex; flex-direction: column; align-items: center; }
   /* haces de luz diagonales */
   .pagina[data-pagina="inicio"]::before, .pagina[data-pagina="inicio"]::after { content: ""; position: absolute; z-index: -1; pointer-events: none; width: 70vw; height: 46vh; filter: blur(46px); opacity: .55; }
   .pagina[data-pagina="inicio"]::before { left: -18vw; top: -16vh; transform: rotate(24deg); background: linear-gradient(90deg, transparent, rgba(255,255,255,.16) 45%, rgba(255,170,110,.12) 60%, transparent); }
@@ -321,21 +326,22 @@
 
   /* ---------- celular ---------- */
   @media (max-width: 1180px) {
-    header .barra-sup { grid-template-columns: auto 1fr auto; padding: 0 16px; height: 72px; }
+    header .barra-sup { grid-template-columns: auto 1fr auto; padding: 0 16px; height: 56px; }
     .menu-btn { display: inline-flex; justify-self: end; }
-    .nav { position: absolute; top: 72px; left: 0; right: 0; justify-self: stretch; flex-direction: column; border-radius: 0; padding: 12px 16px 20px; background: rgba(26,27,31,.98); border: 0; border-bottom: 1px solid var(--borde); display: none; }
+    .nav { position: absolute; top: 56px; left: 0; right: 0; justify-self: stretch; flex-direction: column; gap: 0; border-radius: 0; padding: 8px 16px 18px; background: rgba(18,18,20,.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 0; border-bottom: 1px solid var(--borde); display: none; }
     .nav.abierto { display: flex; }
-    .nav a { font-size: 20px; padding: 14px 18px; border-radius: 14px; }
+    .nav a { font-size: 19px; padding: 12px 6px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .nav a.activo::after { left: auto; right: 6px; bottom: 50%; transform: translateY(50%); }
     .pasos.cuatro { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 760px) {
     .envoltura { padding: 0 16px; }
     .acciones-sup .github { display: none !important; }
-    .marca { font-size: 22px; gap: 8px; }
-    .marca svg { width: 28px; height: 28px; }
+    .marca { font-size: 18px; gap: 7px; }
+    .marca svg { width: 22px; height: 22px; }
     header .barra-sup { gap: 10px; }
-    header button { padding: 10px 14px; font-size: 16px; min-height: 46px; }
-    .menu-btn { padding: 8px 14px; }
+    header button { padding: 7px 12px; font-size: 14px; min-height: 36px; }
+    .menu-btn { padding: 6px 6px; }
     .ficha-cabecera, .protecciones, .comparacion { grid-template-columns: 1fr; }
     .grilla { grid-template-columns: 1fr; }
     .botones-voto { grid-template-columns: 1fr; }
@@ -347,7 +353,7 @@
   }
   @media (max-width: 480px) { .pasos.cuatro { grid-template-columns: 1fr; } }
   @media (max-width: 640px) {
-    .pagina[data-pagina="inicio"] { padding: 14px 14px 0; }
+    .pagina[data-pagina="inicio"] { padding: calc(var(--alto-header, 56px) + 14px) 14px 0; }
     .insignia { font-size: 12.5px; }
     .sobre-globo p { font-size: 15.5px; }
     .sobre-globo .cta { gap: 8px; flex-wrap: nowrap; }
@@ -539,6 +545,7 @@
 </script>
 <script>
   // Alto real del encabezado, para que el Inicio entre justo en la pantalla
+  (() => { const h = document.querySelector("header"); const fondo = () => h.classList.toggle("con-fondo", scrollY > 8); fondo(); addEventListener("scroll", fondo, { passive: true }); })();
   (() => { const h = document.querySelector("header"); const fijar = () => document.documentElement.style.setProperty("--alto-header", h.offsetHeight + "px"); fijar(); addEventListener("resize", fijar); })();
 </script>
 </body>
