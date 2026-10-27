@@ -103,16 +103,17 @@ export function iniciarGlobo(lienzo) {
 
   function dibujar(t) {
     if (!ancho) return;
-    const R = ancho * 0.48, cx = ancho / 2, cy = alto / 2;
+    // el lienzo deja margen alrededor del globo para que el brillo de la atmósfera no se corte
+    const R = ancho * 0.43, cx = ancho / 2, cy = alto / 2;
     ctx.clearRect(0, 0, ancho, alto);
 
     // brillo de la atmósfera
-    const halo = ctx.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.12);
+    const halo = ctx.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.15);
     halo.addColorStop(0, "rgba(255,107,26,0.35)");
     halo.addColorStop(0.35, "rgba(255,107,26,0.12)");
     halo.addColorStop(1, "rgba(255,107,26,0)");
     ctx.fillStyle = halo;
-    ctx.beginPath(); ctx.arc(cx, cy, R * 1.12, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, R * 1.15, 0, Math.PI * 2); ctx.fill();
 
     // esfera oscura con luz arriba
     const esfera = ctx.createRadialGradient(cx, cy - R * 0.55, R * 0.1, cx, cy, R);

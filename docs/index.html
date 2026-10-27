@@ -112,8 +112,8 @@
     background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.03)); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(12px); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
   .insignia i { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--naranja); color: #fff; font-style: normal; font-size: 11px; font-weight: 800; box-shadow: 0 0 12px rgba(255,107,26,.7); }
   .portada h1 { font-size: clamp(64px, min(15vw, 18.5vh), 240px); font-weight: 800; letter-spacing: -.035em; line-height: .88; text-transform: uppercase; padding-top: .14em; margin: calc(-.1em + clamp(0px, .4vh, 6px)) 0 clamp(2px, .6vh, 8px);
-    background: linear-gradient(180deg, #ffffff 15%, #d9d9de 55%, #9a9aa3 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 10px 40px rgba(0,0,0,.5)); }
-  .portada h1 span { background: linear-gradient(180deg, #ffd2ad 0%, #ff8a3d 45%, #ff6b1a 75%, #d8500a 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    /* un solo degradado: naranja abajo a la derecha hasta blanco arriba a la izquierda */
+    background: linear-gradient(to top left, #e2540a 0%, #ff6b1a 16%, #ff9a55 36%, #ffd3b0 56%, #ffffff 74%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 10px 40px rgba(0,0,0,.5)); }
   .portada p { margin: 0; font-size: clamp(17px, min(1.8vw, 2.7vh), 22px); color: var(--suave); font-weight: 500; max-width: 640px; line-height: 1.45; }
   .portada p b { color: var(--tinta); font-weight: 600; }
   .portada .cta { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: clamp(4px, 1.2vh, 14px); }
@@ -126,9 +126,9 @@
 
   /* escenario: globo + tarjetas flotantes */
   .escenario { position: relative; flex: 1; width: 100%; max-width: 1400px; min-height: clamp(150px, 24vh, 380px); }
-  #globo { position: absolute; z-index: 0; left: 50%; bottom: calc(var(--visible) - var(--diam)); transform: translateX(-50%); width: var(--diam); height: var(--diam); pointer-events: none;
+  #globo { position: absolute; z-index: 0; left: 50%; bottom: calc(var(--visible) - var(--diam) * 1.058); transform: translateX(-50%); width: calc(var(--diam) * 1.116); height: calc(var(--diam) * 1.116); pointer-events: none;
     --diam: min(1250px, 120vw, 170vh); --visible: calc(100% + 70px);
-    -webkit-mask-image: linear-gradient(180deg, #000 40%, rgba(0,0,0,.7) 50%, transparent 62%); mask-image: linear-gradient(180deg, #000 40%, rgba(0,0,0,.7) 50%, transparent 62%); }
+    -webkit-mask-image: linear-gradient(180deg, #000 41%, rgba(0,0,0,.7) 50%, transparent 61%); mask-image: linear-gradient(180deg, #000 41%, rgba(0,0,0,.7) 50%, transparent 61%); }
   .flotante { position: absolute; z-index: 3; top: clamp(-110px, -11vh, -30px); width: min(300px, 24vw); display: grid; gap: 10px; padding: 18px 20px; text-align: left; border-radius: 22px;
     background: linear-gradient(180deg, rgba(40,38,40,.62), rgba(20,20,23,.55)); border: 1px solid rgba(255,255,255,.13); backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%);
     box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 24px 60px rgba(0,0,0,.5);
@@ -359,7 +359,7 @@
   @media (max-width: 1100px) {
     .escenario { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-content: start; padding-top: clamp(10px, 2vh, 20px); min-height: 0; max-width: 760px; }
     .flotante { position: relative; top: auto; left: auto !important; right: auto !important; width: auto; }
-    #globo { --diam: min(900px, 150vw, 110vh); bottom: calc(-.42 * var(--diam)); }
+    #globo { --diam: min(900px, 150vw, 110vh); bottom: calc(-.54 * var(--diam)); }
   }
   @media (max-width: 640px) {
     .pagina[data-pagina="inicio"] { padding: 14px 14px 0; }
@@ -422,7 +422,7 @@
   <section class="pagina" data-pagina="inicio">
     <div class="portada">
       <span class="insignia"><i>✓</i>Por etapas · Verificable · Sobre Stellar</span>
-      <h1 aria-label="Órbita">ÓRB<span>ITA</span></h1>
+      <h1>Órbita</h1>
       <p>Una forma de financiar tus proyectos. <b>Para estudiantes con proyectos de software</b>; puede invertir cualquier persona o empresa, de cualquier país.</p>
       <div class="cta">
         <a class="boton" href="#proyectos">Quiero invertir <span class="flecha" aria-hidden="true">→</span></a>
