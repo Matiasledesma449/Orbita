@@ -10,7 +10,7 @@ const UNIDAD = 10n ** BigInt(CONFIG.decimales);
 const ERRORES = {
   1: "El proyecto no existe.", 2: "Revisá las etapas (entre 1 y 10).", 3: "El monto tiene que ser mayor a cero.",
   4: "El proyecto ya no recibe inversiones.", 5: "Se terminó el plazo para invertir.", 6: "Ese monto supera lo que le falta al proyecto.",
-  7: "El proyecto todavía no juntó toda la plata.", 8: "No tenés una parte en este proyecto.",
+  7: "El proyecto todavía no juntó todo el capital.", 8: "No tenés una parte en este proyecto.",
   9: "Ya votaste esta etapa.", 10: "La etapa todavía no tiene más de la mitad de los votos a favor.",
   11: "Todavía no tenés nada para cobrar.", 12: "El plazo tiene que ser una fecha futura.",
   13: "Revisá los textos: falta el nombre o alguno es demasiado largo.", 14: "Esa etapa todavía no se le pagó al equipo.",
@@ -158,9 +158,9 @@ async function operar({ metodo, args, titulo, frase, boton, exito, despues }) {
     dialogo({ titulo: "Enviando…", icono: "espera", texto: "La operación se está registrando en la red de Stellar. Tarda unos segundos.", botones: [] });
     const envio = await servidor.sendTransaction(firmada);
     hash = envio.hash;
-    if (envio.status === "ERROR") throw new Error("La red rechazó la operación. No se movió plata.");
+    if (envio.status === "ERROR") throw new Error("La red rechazó la operación. No se movió dinero.");
     const final = await servidor.pollTransaction(hash, { attempts: 40 });
-    if (final.status !== "SUCCESS") throw new Error(final.status === "NOT_FOUND" ? "tardó" : "La operación falló en la red. No se movió plata.");
+    if (final.status !== "SUCCESS") throw new Error(final.status === "NOT_FOUND" ? "tardó" : "La operación falló en la red. No se movió dinero.");
     const resultado = final.returnValue ? scValToNative(final.returnValue) : null;
     const texto = exito(resultado);
     const plano = document.createElement("div");
@@ -203,10 +203,10 @@ const sumaMinimos = (p) => p.hitos.reduce((s, h) => s + BigInt(h.minimo_retorno)
 
 function estadoTexto(p) {
   const e = Number(p.estado); const n = p.hitos.length;
-  if (e === 0) return "Juntando plata";
+  if (e === 0) return "Juntando capital semilla";
   if (e === 1) return `En marcha: etapa ${Math.min(Number(p.hito_actual) + 1, n)} de ${n}`;
   if (e === 2) return "Terminado";
-  return "No cumplió: podés recuperar tu plata";
+  return "No cumplió: podés recuperar tu dinero";
 }
 const chips = (p) => `<div class="chips"><span class="estado e${Number(p.estado)}">${estadoTexto(p)}</span>${p.incumplido ? `<span class="estado incumplido">Incumplido</span>` : ""}</div>`;
 
@@ -374,7 +374,7 @@ function bloqueTuInversion(p, yo) {
   if (yo.parte === 0n && yo.cobro === 0n) return "";
   const pct = pctDe(yo.parte, p.recaudado);
   const origen = Number(p.estado) === 3 || (Number(p.estado) === 0 && ahora() > Number(p.plazo))
-    ? "Es lo que te corresponde de la plata que quedó guardada (y lo que haya devuelto el equipo)."
+    ? "Es lo que te corresponde del dinero que quedó guardado (y lo que haya devuelto el equipo)."
     : "Es tu parte de lo que devolvió el equipo.";
   return `<div class="tarjeta bloque mio">
     <h3>Tu inversión</h3>
@@ -385,7 +385,7 @@ function bloqueTuInversion(p, yo) {
     </div>
     ${yo.cobro > 0n
       ? `<p>${origen}</p><button data-accion="cobrar">Cobrar ${plata(yo.cobro)}</button>`
-      : `<p class="nota">Por ahora no tenés nada para cobrar. Cuando el equipo devuelva plata, va a aparecer acá.</p>`}
+      : `<p class="nota">Por ahora no tenés nada para cobrar. Cuando el equipo devuelva dinero, va a aparecer acá.</p>`}
     ${bloqueVender(p, yo)}
   </div>`;
 }
@@ -394,7 +394,7 @@ function bloqueVender(p, yo) {
   if (yo.parte === 0n) return "";
   if (yo.oferta) {
     return `<div class="tarea"><h4>Tu parte está en venta</h4>
-      <p>Ofreciste una parte de <b>${plata(yo.oferta.cantidad)}</b> a <b>${plata(yo.oferta.precio)}</b>. Cuando alguien la compre, te llega la plata.</p>
+      <p>Ofreciste una parte de <b>${plata(yo.oferta.cantidad)}</b> a <b>${plata(yo.oferta.precio)}</b>. Cuando alguien la compre, te llega el dinero.</p>
       <button class="sec" data-accion="cancelar-venta">Cancelar la venta</button></div>`;
   }
   if (Number(p.estado) === 1 && yo.yaVoto) {
@@ -415,7 +415,7 @@ function bloqueVender(p, yo) {
 // el botón "Actualizar estado". Devuelve el motivo en palabras, o "".
 function vencimientoPendiente(p, prometido) {
   const t = ahora(); const e = Number(p.estado); const n = Number(p.hito_actual);
-  if (e === 0 && t > Number(p.plazo)) return `Se terminó el plazo para invertir (${fecha(p.plazo)}) sin juntar toda la plata.`;
+  if (e === 0 && t > Number(p.plazo)) return `Se terminó el plazo para invertir (${fecha(p.plazo)}) sin juntar todo el capital.`;
   if (e === 1 && n > 0) {
     const h = p.hitos[n - 1];
     if (!h.evidencia && t > Number(h.fecha_limite)) return `El equipo no mostró la prueba de la etapa ${n} antes del ${fecha(h.fecha_limite)}.`;
@@ -437,7 +437,7 @@ function bloqueActualizar(p, prometido) {
   return `<div class="tarjeta bloque" style="border-color:var(--naranja)">
     <h3>⏰ Hay que actualizar el estado</h3>
     <p>${motivo}</p>
-    <p class="nota">La blockchain todavía no lo registró. Cualquier persona puede actualizarlo: no mueve plata, solo deja registrado lo que pasó${cuenta ? "" : " (necesitás tu billetera conectada)"}.</p>
+    <p class="nota">La blockchain todavía no lo registró. Cualquier persona puede actualizarlo: no mueve dinero, solo deja registrado lo que pasó${cuenta ? "" : " (necesitás tu billetera conectada)"}.</p>
     ${cuenta ? `<button data-accion="actualizar">Actualizar estado</button>` : `<button data-accion="conectar">Conectar billetera</button>`}
   </div>`;
 }
@@ -456,7 +456,7 @@ function bloqueDueno(p, yo, prometido) {
   const e = Number(p.estado); const n = Number(p.hito_actual);
   const tareas = [];
   if (e === 0) {
-    tareas.push(`<div class="tarea"><h4>Tu proyecto está juntando plata</h4>
+    tareas.push(`<div class="tarea"><h4>Tu proyecto está juntando capital semilla</h4>
       <p>Lleva <b>${plata(p.recaudado)}</b> de <b>${plata(p.meta)}</b>. Se puede invertir hasta el ${fecha(p.plazo)}.</p>
       <p class="nota">Compartí este link: <b>${escapar(location.origin + location.pathname)}#proyecto/${p.id}</b></p></div>`);
   }
@@ -482,17 +482,17 @@ function bloqueDueno(p, yo, prometido) {
         : `<div class="tarea"><h4>Etapa ${n + 1}: esperando votos</h4><p>Por ahora ${si}% votó que sí. Necesitás <b>más de la mitad</b> para cobrar. Contales a tus inversores qué van a hacer en esta etapa.</p></div>`);
     }
   }
-  // Devolver plata.
+  // Devolver dinero.
   if (BigInt(p.liberado) > 0n) {
     const pagado = BigInt(p.total_pagado);
     const falta = prometido > pagado ? prometido - pagado : 0n;
     const producto = esProducto(p);
-    tareas.push(`<div class="tarea"><h4>Devolver plata a los inversores</h4>
+    tareas.push(`<div class="tarea"><h4>Devolver dinero a los inversores</h4>
       ${producto
-        ? `<p class="nota">En este proyecto devolvés con producto, fuera de Órbita. Si además querés devolver plata, podés hacerlo acá.</p>`
+        ? `<p class="nota">En este proyecto devolvés con producto, fuera de Órbita. Si además querés devolver dinero, podés hacerlo acá.</p>`
         : `<p>Prometiste devolver <b>${plata(prometido)}</b> por las etapas cobradas. Ya devolviste <b>${plata(pagado)}</b>${falta > 0n ? `: te falta <b>${plata(falta)}</b>` : " ✓"}.</p>
            <p>${falta > 0n ? cuentaRegresiva(p.fecha_devolucion) : `<span class="listo">✓ Ya cumpliste con lo prometido.</span> Si querés, podés devolver más.`}</p>`}
-      <div class="fila-accion"><input data-campo="montoDevolver" inputmode="decimal" autocomplete="off" placeholder="Ej: 25" value="${falta > 0n ? aMoneda(falta).replace(/\./g, "") : ""}"><button data-accion="devolver">Devolver plata</button></div>
+      <div class="fila-accion"><input data-campo="montoDevolver" inputmode="decimal" autocomplete="off" placeholder="Ej: 25" value="${falta > 0n ? aMoneda(falta).replace(/\./g, "") : ""}"><button data-accion="devolver">Devolver dinero</button></div>
       <p class="chico">El contrato lo reparte solo entre los inversores, según la parte de cada uno.${yo.saldo !== null ? ` Tenés ${plata(yo.saldo)} en tu billetera.` : ""}</p></div>`);
   }
   if (!tareas.length) tareas.push(`<p class="nota">No tenés nada pendiente en este proyecto.</p>`);
@@ -552,7 +552,7 @@ function bloqueInvertir(p, yo) {
 function formInvertir(p, yo, abierto, falta) {
   if (!abierto) {
     return Number(p.estado) === 0
-      ? `<p class="nota">Se terminó el plazo sin juntar toda la plata. Si invertiste, podés recuperar tu plata desde "Tu inversión".</p>`
+      ? `<p class="nota">Se terminó el plazo sin juntar todo el capital. Si invertiste, podés recuperar tu dinero desde "Tu inversión".</p>`
       : `<p class="nota">Este proyecto ya no recibe inversiones.</p>`;
   }
   if (!cuenta) return `<p class="nota">Para invertir, conectá tu billetera.</p><button data-accion="conectar">Conectar billetera para invertir</button>`;
@@ -577,14 +577,14 @@ function estadoEtapa(p, h, i) {
   }
   if (e === 3) return { clase: "bloqueado", icono: ICONO.cruz, texto: "No se pagó: el proyecto se cortó." };
   if (e === 1 && i === actual) return { clase: "actual", icono: ICONO.estrella, texto: "Ahora se está votando si se le paga al equipo." };
-  if (e === 0 && i === 0) return { clase: "actual", icono: "1", texto: "Se vota cuando el proyecto junte toda la plata." };
+  if (e === 0 && i === 0) return { clase: "actual", icono: "1", texto: "Se vota cuando el proyecto junte todo el capital." };
   return { clase: "bloqueado", icono: ICONO.candado, texto: "Todavía no empezó." };
 }
 
 function bloqueEtapas(p) {
   return `<div class="tarjeta bloque">
     <h3>Las etapas</h3>
-    <p class="nota">La plata se le paga al equipo antes de cada etapa, si los inversores votan que sí. Después el equipo tiene que mostrar la prueba de lo que hizo antes de la fecha.</p>
+    <p class="nota">El capital se le paga al equipo antes de cada etapa, si los inversores votan que sí. Después el equipo tiene que mostrar la prueba de lo que hizo antes de la fecha.</p>
     <ol class="etapas">${p.hitos.map((h, i) => {
       const est = estadoEtapa(p, h, i);
       const promete = esProducto(p) ? `${BigInt(h.minimo_retorno).toLocaleString("es-AR")} unidades` : plata(h.minimo_retorno);
@@ -616,7 +616,7 @@ function bloqueVotacion(p, yo) {
       <p class="nota">Cada inversor vota con el peso de su parte. Con <b>más de la mitad por el Sí</b>, el equipo cobra la etapa. Con más de la mitad por el No, el proyecto se corta y cada uno recupera su parte de lo que queda.</p>
       ${botonesVoto(p, yo, faltaPrueba)}`;
   } else if (e === 0) {
-    cuerpo = `<p class="nota">La votación empieza cuando el proyecto junte toda la plata.</p>`;
+    cuerpo = `<p class="nota">La votación empieza cuando el proyecto junte todo el capital.</p>`;
   } else if (e === 2) {
     cuerpo = `<p class="nota">Ya se votaron y pagaron todas las etapas.</p>`;
   } else {
@@ -659,7 +659,7 @@ document.addEventListener("click", async (ev) => {
     return operar({
       metodo: "aportar", args: [sv.u32(p.id), sv.address(cuenta), sv.i128(monto)],
       titulo: "Confirmá tu inversión", boton: `Sí, invertir ${plata(monto)}`,
-      frase: `Vas a invertir <b>${plata(monto)}</b> en ${titulo}.<br><br>La plata queda guardada en el contrato (el equipo todavía no la recibe) y vos recibís una parte del proyecto. Si el proyecto no junta toda la plata antes del <b>${fecha(p.plazo)}</b>, la podés recuperar.<br><br>Freighter te va a pedir que confirmes.`,
+      frase: `Vas a invertir <b>${plata(monto)}</b> en ${titulo}.<br><br>El dinero queda guardado en el contrato (el equipo todavía no lo recibe) y vos recibís una parte del proyecto. Si el proyecto no junta todo el capital antes del <b>${fecha(p.plazo)}</b>, lo podés recuperar.<br><br>Freighter te va a pedir que confirmes.`,
       exito: (parte) => `Invertiste <b>${plata(monto)}</b> en ${titulo}.<br>Ahora tu parte del proyecto es de <b>${plata(parte)}</b>.`,
     });
   }
@@ -711,7 +711,7 @@ document.addEventListener("click", async (ev) => {
     const tarde = ahora() > Number(p.fecha_devolucion) && pagado < prometido && !p.incumplido && !esProducto(p);
     return operar({
       metodo: "pagar_retorno", args: [sv.u32(p.id), sv.address(cuenta), sv.i128(monto)],
-      titulo: "Devolver plata", boton: `Sí, devolver ${plata(monto)}`,
+      titulo: "Devolver dinero", boton: `Sí, devolver ${plata(monto)}`,
       frase: `Vas a devolver <b>${plata(monto)}</b> a los inversores de ${titulo}.<br><br>El contrato lo reparte solo entre los inversores, según la parte de cada uno, y queda en el historial público.${tarde ? "<br><br><b>Ojo:</b> ya pasó la fecha de devolución, así que el proyecto va a quedar marcado como \"Incumplido\" aunque pagues ahora." : ""}`,
       exito: (total) => {
         const queda = prometido > BigInt(total) ? prometido - BigInt(total) : 0n;
@@ -725,7 +725,7 @@ document.addEventListener("click", async (ev) => {
     return operar({
       metodo: "revisar", args: [sv.u32(p.id)],
       titulo: "Actualizar el estado", boton: "Sí, actualizar",
-      frase: `Vas a registrar en la blockchain lo que pasó con ${titulo}:<br><b>${motivo}</b><br><br>No mueve plata. Después, si te corresponde, vas a poder recuperar o cobrar tu parte.`,
+      frase: `Vas a registrar en la blockchain lo que pasó con ${titulo}:<br><b>${motivo}</b><br><br>No mueve dinero. Después, si te corresponde, vas a poder recuperar o cobrar tu parte.`,
       exito: (estado) => {
         const q = { ...p, estado };
         return `Listo: el estado de ${titulo} quedó actualizado. Ahora dice: <b>${estadoTexto(q)}</b>.`;
@@ -773,7 +773,7 @@ document.addEventListener("click", async (ev) => {
     return operar({
       metodo: "cobrar", args: [sv.u32(p.id), sv.address(cuenta)],
       titulo: "Confirmá el cobro", boton: `Sí, cobrar ${plata(yo.cobro)}`,
-      frase: `Vas a cobrar <b>${plata(yo.cobro)}</b> de ${titulo}.<br><br>La plata llega a tu billetera. Tu parte del proyecto no cambia: si el equipo devuelve más plata, vas a poder volver a cobrar.`,
+      frase: `Vas a cobrar <b>${plata(yo.cobro)}</b> de ${titulo}.<br><br>El dinero llega a tu billetera. Tu parte del proyecto no cambia: si el equipo devuelve más dinero, vas a poder volver a cobrar.`,
       exito: (monto) => `Cobraste <b>${plata(monto)}</b>. Ya está en tu billetera.`,
     });
   }
@@ -898,7 +898,7 @@ function bloqueHoy(datos) {
       });
       const falta = prometido - BigInt(p.total_pagado);
       if (BigInt(p.liberado) > 0n && falta > 0n && !esProducto(p))
-        envolver(`<b>Devolvé ${plata(falta)}</b> a los inversores de ${nombreProyecto(p)}. ${cuentaRegresiva(p.fecha_devolucion)}`, `<a class="boton" href="#proyecto/${p.id}">Devolver plata</a>`);
+        envolver(`<b>Devolvé ${plata(falta)}</b> a los inversores de ${nombreProyecto(p)}. ${cuentaRegresiva(p.fecha_devolucion)}`, `<a class="boton" href="#proyecto/${p.id}">Devolver dinero</a>`);
     }
   }
   return `<div class="tarjeta hoy"><h3>Qué te toca hacer hoy</h3>
@@ -960,7 +960,7 @@ function mostrarPublicar() {
   const caja = $("publicarContenido");
   if (!cuenta) {
     caja.innerHTML = `<div class="tarjeta"><h3>Primero conectá tu billetera</h3>
-      <p class="nota">El proyecto se publica a nombre de tu billetera: es la que va a recibir la plata de cada etapa. Si es tu primera vez, seguí los 3 pasos de "Cómo funciona".</p>
+      <p class="nota">El proyecto se publica a nombre de tu billetera: es la que va a recibir el capital de cada etapa. Si es tu primera vez, seguí los 3 pasos de "Cómo funciona".</p>
       <div class="fila-accion"><button data-pub="conectar">Conectar billetera</button><a class="boton sec" href="#como-funciona">Ver los 3 pasos</a></div></div>`;
     return;
   }
@@ -992,7 +992,7 @@ function mostrarPublicar() {
       <div class="cabeza"><strong>Etapa ${i + 1}</strong>${b.etapas.length > 1 ? `<button class="sec" data-pub="quitar" data-i="${i}" style="min-height:44px;padding:8px 16px;font-size:16px">Quitar</button>` : ""}</div>
       <label class="campo">¿Qué van a hacer en esta etapa? <input data-etapa="desc" data-i="${i}" maxlength="120" value="${escapar(e.desc)}" placeholder="${i === 0 ? "Ej: Prototipo con login y pantalla principal" : "Ej: Lanzamiento y primeros 100 usuarios"}"></label>
       <div class="dos">
-        <label class="campo">Plata que necesitan (${CONFIG.moneda}) <input data-etapa="monto" data-i="${i}" inputmode="decimal" value="${escapar(e.monto)}" placeholder="Ej: 150"></label>
+        <label class="campo">Capital que necesitan (${CONFIG.moneda}) <input data-etapa="monto" data-i="${i}" inputmode="decimal" value="${escapar(e.monto)}" placeholder="Ej: 150"></label>
         <label class="campo">${producto ? "Unidades que se comprometen a entregar" : `Mínimo que se comprometen a devolver (${CONFIG.moneda})`} <input data-etapa="minimo" data-i="${i}" inputmode="decimal" value="${escapar(e.minimo)}" placeholder="${producto ? "Ej: 20" : "Ej: 165"}"></label>
       </div></div>`).join("")}
     ${b.etapas.length < 10 ? `<button class="sec" data-pub="agregar">+ Agregar otra etapa</button>` : ""}
@@ -1000,7 +1000,7 @@ function mostrarPublicar() {
   }
   if (b.paso === 4) cuerpo = `
     <h3>Paso 4: Las fechas</h3>
-    <label class="campo">¿Hasta cuándo se puede invertir? <span class="ayuda">Si para esa fecha no se juntó toda la plata, cada inversor recupera lo suyo.</span>
+    <label class="campo">¿Hasta cuándo se puede invertir? <span class="ayuda">Si para esa fecha no se juntó todo el capital, cada inversor recupera lo suyo.</span>
       <input type="date" id="fPlazo" value="${aFechaInput(b.plazo)}"></label>
     ${b.etapas.map((e, i) => `<label class="campo">Etapa ${i + 1} (${escapar(e.desc) || "sin nombre"}): mostrar la prueba hasta el <span class="ayuda">Después de cobrar la etapa, para esta fecha tenés que subir la demo y el link a GitHub. Si no, el proyecto se corta.</span>
       <input type="date" data-fecha="${i}" value="${aFechaInput(b.fechas[i])}"></label>`).join("")}
@@ -1056,7 +1056,7 @@ function validarPaso(paso) {
       if (!e.desc) return `Escribí qué van a hacer en la etapa ${i + 1}.`;
       if (bytes(e.desc) > 120) return `La descripción de la etapa ${i + 1} es muy larga.`;
       const m = aUnidades(e.monto);
-      if (!m || m <= 0n) return `Escribí cuánta plata necesitan en la etapa ${i + 1} (por ejemplo, 150).`;
+      if (!m || m <= 0n) return `Escribí cuánto capital necesitan en la etapa ${i + 1} (por ejemplo, 150).`;
       const min = minimoUnidades(b, e.minimo || "0");
       if (min === null || min < 0n) return `Revisá el mínimo de la etapa ${i + 1}: tiene que ser un número${b.tipo === 3 ? " entero de unidades" : ""}.`;
     }
@@ -1137,7 +1137,7 @@ $("publicarContenido").addEventListener("click", async (ev) => {
         S.xdr.ScVal.scvVec(b.fechas.slice(0, b.etapas.length).map((f) => S.nativeToScVal(BigInt(f), { type: "u64" }))),
         S.nativeToScVal(BigInt(b.devolucion), { type: "u64" })],
       titulo: "Confirmá la publicación", boton: "Sí, publicar",
-      frase: `Vas a publicar <b>«${escapar(b.titulo)}»</b> para juntar <b>${plata(meta)}</b> hasta el <b>${fecha(b.plazo)}</b>.<br><br>Queda guardado en la blockchain y no se puede editar. La plata de cada etapa va a llegar a esta billetera, cuando los inversores voten que sí.`,
+      frase: `Vas a publicar <b>«${escapar(b.titulo)}»</b> para juntar <b>${plata(meta)}</b> hasta el <b>${fecha(b.plazo)}</b>.<br><br>Queda guardado en la blockchain y no se puede editar. El capital de cada etapa va a llegar a esta billetera, cuando los inversores voten que sí.`,
       exito: (nuevo) => `Tu proyecto <b>«${escapar(b.titulo)}»</b> ya está publicado (número ${nuevo}).<br><br>Compartí este link con quienes quieras que inviertan:<br><b>${escapar(location.origin + location.pathname)}#proyecto/${nuevo}</b>`,
       despues: (nuevo) => { borrador = borradorNuevo(); guardarBorrador(); location.hash = `#proyecto/${nuevo}`; },
     });
