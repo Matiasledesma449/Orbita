@@ -58,7 +58,7 @@ function aVector(lon, lat) {
   return [Math.cos(f) * Math.sin(l), Math.sin(f), Math.cos(f) * Math.cos(l)];
 }
 
-function arco(a, b, n = 48) {
+function arco(a, b, n = 90) {
   const va = aVector(...a), vb = aVector(...b);
   const ang = Math.acos(Math.min(1, va[0] * vb[0] + va[1] * vb[1] + va[2] * vb[2]));
   const s = Math.sin(ang) || 1;
@@ -83,84 +83,105 @@ export function iniciarGlobo(lienzo) {
 
   let ancho = 0, alto = 0, dpr = 1, giro = -22, cuadro = 0;
   const inclinacion = -31 * RAD; // Argentina queda cerca del centro y los arcos suben hacia el norte
+  const ci = Math.cos(inclinacion), si = Math.sin(inclinacion);
+  let fondo = null;   // halo + esfera: se dibujan una sola vez por tamaño de pantalla
+  let chispa = null;  // brillo redondo ya dibujado, se reutiliza para la luz que viaja y las ciudades
+  const NIVELES = 6;  // los puntos de tierra se agrupan por brillo para dibujarlos de a montones
 
   function medir() {
-    dpr = Math.min(devicePixelRatio || 1, 2);
     const r = lienzo.getBoundingClientRect();
     ancho = r.width; alto = r.height;
+    // resolución limitada: el globo es grande y no hace falta más para que se vea nítido
+    dpr = Math.min(devicePixelRatio || 1, 1.5, 2600 / Math.max(ancho, 1));
     lienzo.width = Math.round(ancho * dpr); lienzo.height = Math.round(alto * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    prepararFondo();
   }
 
-  function proyectar([x, y, z], R, cx, cy) {
-    const g = giro * RAD;
-    const x1 = x * Math.cos(g) - z * Math.sin(g);
-    const z1 = x * Math.sin(g) + z * Math.cos(g);
-    const y2 = y * Math.cos(inclinacion) - z1 * Math.sin(inclinacion);
-    const z2 = y * Math.sin(inclinacion) + z1 * Math.cos(inclinacion);
-    return [cx + x1 * R, cy - y2 * R, z2];
+  function prepararFondo() {
+    const R = ancho * 0.43, cx = ancho / 2, cy = alto / 2;
+    fondo = document.createElement("canvas");
+    fondo.width = lienzo.width; fondo.height = lienzo.height;
+    const f = fondo.getContext("2d");
+    f.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const halo = f.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.15);
+    halo.addColorStop(0, "rgba(255,107,26,0.35)"); halo.addColorStop(0.35, "rgba(255,107,26,0.12)"); halo.addColorStop(1, "rgba(255,107,26,0)");
+    f.fillStyle = halo; f.beginPath(); f.arc(cx, cy, R * 1.15, 0, Math.PI * 2); f.fill();
+    const esfera = f.createRadialGradient(cx, cy - R * 0.55, R * 0.1, cx, cy, R);
+    esfera.addColorStop(0, "#2a1a12"); esfera.addColorStop(0.6, "#151312"); esfera.addColorStop(1, "#0d0d0f");
+    f.fillStyle = esfera; f.beginPath(); f.arc(cx, cy, R, 0, Math.PI * 2); f.fill();
+    f.strokeStyle = "rgba(255,150,90,0.45)"; f.lineWidth = 1.2; f.stroke();
+
+    chispa = document.createElement("canvas");
+    const c = 64; chispa.width = chispa.height = c;
+    const g = chispa.getContext("2d");
+    const brillo = g.createRadialGradient(c / 2, c / 2, 0, c / 2, c / 2, c / 2);
+    brillo.addColorStop(0, "rgba(255,240,225,1)"); brillo.addColorStop(0.12, "rgba(255,200,150,0.95)");
+    brillo.addColorStop(0.35, "rgba(255,107,26,0.45)"); brillo.addColorStop(1, "rgba(255,107,26,0)");
+    g.fillStyle = brillo; g.fillRect(0, 0, c, c);
   }
 
   function dibujar(t) {
-    if (!ancho) return;
-    // el lienzo deja margen alrededor del globo para que el brillo de la atmósfera no se corte
+    if (!ancho || !fondo) return;
     const R = ancho * 0.43, cx = ancho / 2, cy = alto / 2;
-    ctx.clearRect(0, 0, ancho, alto);
+    const g = giro * RAD, cg = Math.cos(g), sg = Math.sin(g);
+    const proyectar = (x, y, z) => {
+      const x1 = x * cg - z * sg, z1 = x * sg + z * cg;
+      return [cx + x1 * R, cy - (y * ci - z1 * si) * R, y * si + z1 * ci];
+    };
 
-    // brillo de la atmósfera
-    const halo = ctx.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.15);
-    halo.addColorStop(0, "rgba(255,107,26,0.35)");
-    halo.addColorStop(0.35, "rgba(255,107,26,0.12)");
-    halo.addColorStop(1, "rgba(255,107,26,0)");
-    ctx.fillStyle = halo;
-    ctx.beginPath(); ctx.arc(cx, cy, R * 1.15, 0, Math.PI * 2); ctx.fill();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, lienzo.width, lienzo.height);
+    ctx.drawImage(fondo, 0, 0);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // esfera oscura con luz arriba
-    const esfera = ctx.createRadialGradient(cx, cy - R * 0.55, R * 0.1, cx, cy, R);
-    esfera.addColorStop(0, "#2a1a12"); esfera.addColorStop(0.6, "#151312"); esfera.addColorStop(1, "#0d0d0f");
-    ctx.fillStyle = esfera;
-    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "rgba(255,150,90,0.45)"; ctx.lineWidth = 1.2; ctx.stroke();
-
-    // continentes en puntos
+    // continentes: un solo trazo por nivel de brillo (miles de puntos en pocas llamadas)
     const tam = Math.max(1.3, R / 250);
+    const caminos = Array.from({ length: NIVELES }, () => new Path2D());
     for (const p of tierra) {
-      const [x, y, z] = proyectar(p, R, cx, cy);
+      const x1 = p[0] * cg - p[2] * sg, z1 = p[0] * sg + p[2] * cg;
+      const z = p[1] * si + z1 * ci;
       if (z <= 0.02) continue;
       const luz = Math.min(1, z * 1.3);
-      ctx.fillStyle = `rgba(255,${125 + Math.round(75 * luz)},${80 + Math.round(70 * luz)},${0.22 + 0.7 * luz})`;
-      ctx.beginPath(); ctx.arc(x, y, (tam / 2) * (0.7 + 0.3 * luz), 0, Math.PI * 2); ctx.fill();
+      const nivel = Math.min(NIVELES - 1, Math.floor(luz * NIVELES));
+      const x = cx + x1 * R, y = cy - (p[1] * ci - z1 * si) * R, r = (tam / 2) * (0.7 + 0.3 * luz);
+      caminos[nivel].moveTo(x + r, y); caminos[nivel].arc(x, y, r, 0, Math.PI * 2);
+    }
+    for (let n = 0; n < NIVELES; n++) {
+      const luz = (n + 0.5) / NIVELES;
+      ctx.fillStyle = `rgba(255,${125 + Math.round(75 * luz)},${80 + Math.round(70 * luz)},${(0.22 + 0.7 * luz).toFixed(3)})`;
+      ctx.fill(caminos[n]);
     }
 
-    // arcos con una luz que viaja
-    ctx.lineCap = "round";
+    // arcos: un trazo ancho y suave abajo + uno fino arriba (brillo sin sombras pesadas)
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    const luces = [];
     for (const a of arcos) {
-      const pts = a.puntos.map((p) => proyectar(p, R, cx, cy));
-      ctx.beginPath();
+      const pts = a.puntos.map((q) => proyectar(q[0], q[1], q[2]));
+      const linea = new Path2D();
       let dibujando = false;
       for (const [x, y, z] of pts) {
-        if (z > -0.05) { dibujando ? ctx.lineTo(x, y) : ctx.moveTo(x, y); dibujando = true; } else dibujando = false;
+        if (z > -0.05) { dibujando ? linea.lineTo(x, y) : linea.moveTo(x, y); dibujando = true; } else dibujando = false;
       }
-      ctx.strokeStyle = "rgba(255,140,60,0.55)"; ctx.lineWidth = 1.4;
-      ctx.shadowColor = "rgba(255,107,26,0.9)"; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
-      const k = (t / 4200 + a.fase) % 1;
-      const [x, y, z] = pts[Math.floor(k * (pts.length - 1))];
-      if (z > 0) {
-        ctx.fillStyle = "#ffe2c8"; ctx.shadowColor = "#ff6b1a"; ctx.shadowBlur = 14;
-        ctx.beginPath(); ctx.arc(x, y, 2.4, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
-      }
+      ctx.strokeStyle = "rgba(255,107,26,0.16)"; ctx.lineWidth = 5; ctx.stroke(linea);
+      ctx.strokeStyle = "rgba(255,150,80,0.6)"; ctx.lineWidth = 1.3; ctx.stroke(linea);
+      // la luz avanza suave: se ubica entre dos puntos del arco, no salta de uno a otro
+      const k = ((t / 4200 + a.fase) % 1) * (pts.length - 1);
+      const i = Math.floor(k), f = k - i, A = pts[i], B = pts[Math.min(i + 1, pts.length - 1)];
+      const z = A[2] + (B[2] - A[2]) * f;
+      if (z > 0) luces.push([A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f, 22]);
     }
 
     // ciudades que laten
     for (const n of nodos) {
-      const [x, y, z] = proyectar(n.v, R, cx, cy);
+      const [x, y, z] = proyectar(n.v[0], n.v[1], n.v[2]);
       if (z <= 0) continue;
-      const pulso = (Math.sin(t / 500 + x) + 1) / 2;
-      const r = (n.origen ? 4.2 : 2.8) * (0.85 + 0.3 * pulso);
-      ctx.fillStyle = n.origen ? "#ffffff" : "#ffb27a";
-      ctx.shadowColor = "#ff6b1a"; ctx.shadowBlur = n.origen ? 22 : 12;
-      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+      const pulso = (Math.sin(t / 520 + n.v[0] * 9) + 1) / 2;
+      luces.push([x, y, (n.origen ? 34 : 22) * (0.85 + 0.3 * pulso)]);
     }
+    ctx.globalCompositeOperation = "lighter";
+    for (const [x, y, d] of luces) ctx.drawImage(chispa, x - d / 2, y - d / 2, d, d);
+    ctx.globalCompositeOperation = "source-over";
   }
 
   function bucle(t) {
