@@ -150,6 +150,38 @@
   .intro .sobre-globo { animation: aparece .8s ease 1.6s both; }
   .intro .franja { animation: aparece .8s ease 1.85s both; }
   @media (prefers-reduced-motion: reduce) { .intro #globo, .intro .titulo-gigante, .intro .sobre-globo, .intro .franja, .intro [data-pagina="inicio"] > .insignia { animation: none; } }
+  /* ---------- transición entre páginas ---------- */
+  header { view-transition-name: barra; }
+  ::view-transition-group(barra), ::view-transition-new(barra) { animation: none; }
+  ::view-transition-old(barra) { display: none; }
+  ::view-transition-old(root) { animation: .34s cubic-bezier(.4,0,1,1) both salirAdelante; }
+  ::view-transition-new(root) { animation: .55s cubic-bezier(.16,.84,.3,1) .08s both entrarAdelante; }
+  html[data-direccion="atras"]::view-transition-old(root) { animation-name: salirAtras; }
+  html[data-direccion="atras"]::view-transition-new(root) { animation-name: entrarAtras; }
+  @keyframes salirAdelante { to { opacity: 0; transform: translateX(-48px) scale(.985); filter: blur(6px); } }
+  @keyframes salirAtras { to { opacity: 0; transform: translateX(48px) scale(.985); filter: blur(6px); } }
+  @keyframes entrarAdelante { from { opacity: 0; transform: translateX(64px) scale(.985); filter: blur(6px); } }
+  @keyframes entrarAtras { from { opacity: 0; transform: translateX(-64px) scale(.985); filter: blur(6px); } }
+  .pagina.entrando { animation: entrarAdelante .55s cubic-bezier(.16,.84,.3,1) both; }
+  html[data-direccion="atras"] .pagina.entrando { animation-name: entrarAtras; }
+  /* los bloques de la página nueva aparecen escalonados */
+  .escalonar .titulo-pagina, .escalonar .pasos > *, .escalonar .protecciones > *, .escalonar > details, .escalonar .guia, .escalonar > h3,
+  .escalonar #ficha > *, .escalonar #publicarContenido > *, .escalonar #panelContenido > * { animation: aparece .6s cubic-bezier(.2,.8,.2,1) backwards; }
+  .escalonar .pasos > :nth-child(1), .escalonar > details:nth-of-type(1) { animation-delay: .12s; }
+  .escalonar .pasos > :nth-child(2), .escalonar > details:nth-of-type(2) { animation-delay: .18s; }
+  .escalonar .pasos > :nth-child(3), .escalonar > details:nth-of-type(3) { animation-delay: .24s; }
+  .escalonar .pasos > :nth-child(4), .escalonar > details:nth-of-type(4) { animation-delay: .30s; }
+  .escalonar > h3, .escalonar > details:nth-of-type(n+5) { animation-delay: .34s; }
+  .escalonar .protecciones > :nth-child(1) { animation-delay: .38s; } .escalonar .protecciones > :nth-child(2) { animation-delay: .44s; } .escalonar .protecciones > :nth-child(3) { animation-delay: .50s; }
+  .escalonar .guia { animation-delay: .56s; }
+  /* las tarjetas de proyectos aparecen una tras otra cuando terminan de cargar */
+  .grilla > .proyecto { animation: aparece .55s cubic-bezier(.2,.8,.2,1) backwards; }
+  .grilla > .proyecto:nth-child(2) { animation-delay: .07s; } .grilla > .proyecto:nth-child(3) { animation-delay: .14s; }
+  .grilla > .proyecto:nth-child(4) { animation-delay: .21s; } .grilla > .proyecto:nth-child(n+5) { animation-delay: .28s; }
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+    .pagina.entrando, .escalonar *, .grilla > .proyecto { animation: none !important; }
+  }
   .solo-celu { display: none; }
   @media (max-width: 640px) { .solo-pc { display: none; } .solo-celu { display: inline; } }
   /* franja inferior */

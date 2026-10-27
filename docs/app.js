@@ -213,14 +213,42 @@ const chips = (p) => `<div class="chips"><span class="estado e${Number(p.estado)
 // ---------- páginas ----------
 const PAGINAS = ["inicio", "como-funciona", "proyectos", "proyecto", "publicar", "panel", "preguntas"];
 
-function irA() {
-  const [pagina, param] = (location.hash.slice(1) || "inicio").split("/");
-  const actual = PAGINAS.includes(pagina) ? pagina : "inicio";
+// Transición entre páginas: la anterior se desvanece y la nueva entra deslizándose
+// (hacia la izquierda si avanzás en el menú, hacia la derecha si volvés). La barra de arriba queda quieta.
+let paginaVisible = null;
+const sinMovimiento = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function cambiarPagina(actual) {
   document.querySelectorAll(".pagina").forEach((s) => (s.hidden = s.dataset.pagina !== actual));
   const enMenu = actual === "proyecto" ? "proyectos" : actual;
   document.querySelectorAll("#nav a").forEach((a) => a.classList.toggle("activo", a.getAttribute("href") === "#" + enMenu));
   cerrarMenu();
   window.scrollTo({ top: 0 });
+}
+
+function animarCambio(actual) {
+  const antes = paginaVisible;
+  paginaVisible = actual;
+  if (antes === null || antes === actual || sinMovimiento) return cambiarPagina(actual);
+  const orden = (p) => PAGINAS.indexOf(p === "proyecto" ? "proyectos" : p) + (p === "proyecto" ? 0.5 : 0);
+  document.documentElement.dataset.direccion = orden(actual) >= orden(antes) ? "adelante" : "atras";
+  const nueva = document.querySelector(`.pagina[data-pagina="${actual}"]`);
+  if (document.startViewTransition) {
+    document.startViewTransition(() => cambiarPagina(actual));
+  } else {
+    // navegadores sin transiciones de vista: solo la entrada de la nueva página
+    cambiarPagina(actual);
+    nueva.classList.remove("entrando"); void nueva.offsetWidth; nueva.classList.add("entrando");
+  }
+  // los bloques de la página nueva aparecen uno tras otro
+  nueva.classList.remove("escalonar"); void nueva.offsetWidth; nueva.classList.add("escalonar");
+  clearTimeout(nueva._t); nueva._t = setTimeout(() => nueva.classList.remove("entrando", "escalonar"), 1400);
+}
+
+function irA() {
+  const [pagina, param] = (location.hash.slice(1) || "inicio").split("/");
+  const actual = PAGINAS.includes(pagina) ? pagina : "inicio";
+  animarCambio(actual);
   if (actual === "inicio") mostrarNumeros();
   if (actual === "proyectos") mostrarProyectos();
   if (actual === "proyecto") mostrarFicha(Number(param));
