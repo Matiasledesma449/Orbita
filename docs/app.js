@@ -1166,11 +1166,15 @@ function mostrarGuia() {
 
 // Animación al conectar: mientras Freighter responde el botón brilla; al conectarse "salta",
 // lanza ondas verdes y chispas, y aparece el tilde.
+// Texto del botón sin conectar: con ícono, y más corto en celulares
+const ICONO_BILLETERA = document.querySelector("#btnConectar .icono-billetera")?.outerHTML || "";
+function textoConectar() { $("btnConectar").innerHTML = `${ICONO_BILLETERA}<span class="txt-largo">Conectar billetera</span><span class="txt-corto">Conectar</span>`; }
+
 function esperandoBilletera(si) {
   const b = $("btnConectar");
   b.classList.toggle("conectando", si);
   if (si) b.textContent = "Conectando…";
-  else if (!cuenta) b.textContent = "Conectar billetera";
+  else if (!cuenta) textoConectar();
 }
 
 function festejarConexion() {
@@ -1220,7 +1224,7 @@ function abrirMenuBilletera(abrir) {
 function desconectar() {
   cuenta = null;
   abrirMenuBilletera(false);
-  $("btnConectar").textContent = "Conectar billetera";
+  textoConectar();
   $("btnConectar").title = "";
   $("btnConectar").classList.remove("conectado");
   $("btnFondearGuia").hidden = true;

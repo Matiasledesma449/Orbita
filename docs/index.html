@@ -62,6 +62,14 @@
   .github { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: #c9cbd2; border: 1.5px solid var(--borde); flex: none; }
   .github:hover { color: var(--naranja); border-color: var(--naranja); }
   .github svg { width: 17px; height: 17px; }
+  .icono-billetera { width: 17px; height: 17px; flex: none; }
+  .txt-corto, .nav .solo-menu { display: none; }
+  .hamburguesa { position: relative; width: 18px; height: 14px; display: block; }
+  .hamburguesa i { position: absolute; left: 0; right: 0; height: 2px; border-radius: 2px; background: currentColor; transition: transform .3s cubic-bezier(.2,.8,.2,1), opacity .2s, top .3s; }
+  .hamburguesa i:nth-child(1) { top: 0; } .hamburguesa i:nth-child(2) { top: 6px; } .hamburguesa i:nth-child(3) { top: 12px; }
+  .menu-btn[aria-expanded="true"] .hamburguesa i:nth-child(1) { top: 6px; transform: rotate(45deg); }
+  .menu-btn[aria-expanded="true"] .hamburguesa i:nth-child(2) { opacity: 0; transform: scaleX(.2); }
+  .menu-btn[aria-expanded="true"] .hamburguesa i:nth-child(3) { top: 6px; transform: rotate(-45deg); }
   .menu-btn { display: none; background: transparent; border: 0; box-shadow: none; padding: 6px 8px; min-height: 36px; font-size: 21px; line-height: 1; color: var(--tinta); }
 
   /* ---------- botones ---------- */
@@ -378,12 +386,27 @@
 
   /* ---------- celular ---------- */
   @media (max-width: 1180px) {
-    header .barra-sup { grid-template-columns: auto 1fr auto; padding: 0 16px; height: 56px; }
-    .menu-btn { display: inline-flex; justify-self: end; }
-    .nav { position: absolute; top: 56px; left: 0; right: 0; justify-self: stretch; flex-direction: column; gap: 0; border-radius: 0; padding: 8px 16px 18px; background: rgba(18,18,20,.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 0; border-bottom: 1px solid var(--borde); display: none; }
-    .nav.abierto { display: flex; }
-    .nav a { font-size: 19px; padding: 12px 6px; border-bottom: 1px solid rgba(255,255,255,.06); }
-    .nav a.activo::after { left: auto; right: 6px; bottom: 50%; transform: translateY(50%); }
+    /* logo a la izquierda; billetera y menú juntos a la derecha */
+    header .barra-sup { grid-template-columns: 1fr auto; padding: 0 14px; height: 60px; gap: 12px; }
+    .acciones-sup { grid-column: 2; justify-self: end; gap: 8px; }
+    .menu-btn { display: inline-grid; place-items: center; width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.03)); border: 1px solid rgba(255,255,255,.14); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
+    /* menú desplegable: tarjeta de vidrio que baja con los enlaces uno debajo del otro */
+    .nav { position: absolute; top: 64px; left: 12px; right: 12px; justify-self: stretch; flex-direction: column; gap: 2px; padding: 8px;
+      border-radius: 22px; background: #18171a; backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%);
+      border: 1px solid rgba(255,255,255,.12); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 24px 60px rgba(0,0,0,.55); display: none; }
+    .nav.abierto { display: flex; animation: menuBaja .32s cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes menuBaja { from { opacity: 0; transform: translateY(-10px) scale(.98); } to { opacity: 1; transform: none; } }
+    .nav a { display: flex; justify-content: space-between; align-items: center; font-size: 18px; font-weight: 600; padding: 14px 16px; border-radius: 14px; color: var(--tinta); }
+    .nav a::before { content: "›"; order: 2; color: var(--tenue); font-size: 22px; line-height: 1; }
+    .nav a:hover, .nav a.activo { background: rgba(255,255,255,.06); }
+    .nav a.activo { color: #fff; box-shadow: inset 3px 0 0 var(--naranja); }
+    .nav a.activo::after { display: none; }
+    .nav .solo-menu { display: flex; margin-top: 6px; border-top: 1px solid rgba(255,255,255,.08); border-radius: 0 0 14px 14px; color: var(--suave); font-weight: 500; font-size: 16px; }
+    .nav .solo-menu::before { content: ""; }
+    .nav.abierto a { animation: aparece .35s ease both; }
+    .nav.abierto a:nth-child(2) { animation-delay: .03s; } .nav.abierto a:nth-child(3) { animation-delay: .06s; } .nav.abierto a:nth-child(4) { animation-delay: .09s; }
+    .nav.abierto a:nth-child(5) { animation-delay: .12s; } .nav.abierto a:nth-child(6) { animation-delay: .15s; } .nav.abierto a:nth-child(7) { animation-delay: .18s; }
     .pasos.cuatro { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 760px) {
@@ -392,8 +415,12 @@
     .marca { font-size: 18px; gap: 7px; }
     .marca svg { width: 22px; height: 22px; }
     header .barra-sup { gap: 10px; }
-    header button { padding: 7px 12px; font-size: 14px; min-height: 36px; }
-    .menu-btn { padding: 6px 6px; }
+    #btnConectar { padding: 8px 14px; font-size: 14px; min-height: 40px; gap: 7px; }
+    /* menú de la billetera en celular: ocupa el ancho, sólido y con la dirección en letra chica */
+    .billetera { position: static; }
+    .menu-billetera { position: absolute; top: 64px; left: 12px; right: 12px; width: auto; background: #18171a; border-radius: 22px; animation: menuBaja .32s cubic-bezier(.2,.8,.2,1) both; }
+    .mb-dir span { font-size: 14px; font-weight: 600; color: var(--suave); font-family: ui-monospace, monospace; }
+    .menu-btn { padding: 0; }
     .ficha-cabecera, .protecciones, .comparacion { grid-template-columns: 1fr; }
     .grilla { grid-template-columns: 1fr; }
     .botones-voto { grid-template-columns: 1fr; }
@@ -404,6 +431,7 @@
     h2, .ficha h2 { font-size: 30px; }
   }
   @media (max-width: 480px) { .pasos.cuatro { grid-template-columns: 1fr; } }
+  @media (max-width: 520px) { .txt-largo { display: none; } .txt-corto { display: inline; } }
   @media (max-width: 640px) {
     .pagina[data-pagina="inicio"] { padding: calc(var(--alto-header, 56px) + 14px) 14px 0; }
     .insignia { font-size: 12.5px; }
@@ -429,10 +457,11 @@
       <a href="#publicar">Publicar</a>
       <a href="#panel">Mi panel</a>
       <a href="#preguntas">Preguntas</a>
+      <a class="solo-menu" href="https://github.com/Matiasledesma449/Orbita" target="_blank" rel="noopener">Código en GitHub ↗</a>
     </nav>
     <div class="acciones-sup">
       <div class="billetera">
-        <button id="btnConectar" aria-haspopup="menu" aria-expanded="false">Conectar billetera</button>
+        <button id="btnConectar" aria-haspopup="menu" aria-expanded="false"><svg class="icono-billetera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a1 1 0 0 1 1 1v3"/><path d="M3 5v14a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-3"/><path d="M21 11h-4a2 2 0 0 0 0 4h4z"/></svg><span class="txt-largo">Conectar billetera</span><span class="txt-corto">Conectar</span></button>
         <div class="menu-billetera" id="menuBilletera" role="menu" hidden>
           <div class="mb-dir"><small>Tu billetera (red de prueba)</small><span id="menuDir"></span></div>
           <button type="button" class="item" role="menuitem" id="btnCopiar">Copiar dirección</button>
@@ -441,7 +470,7 @@
         </div>
       </div>
       <a class="github" href="https://github.com/Matiasledesma449/Orbita" target="_blank" rel="noopener" title="Código en GitHub" aria-label="Código en GitHub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l-6-6 6-6M15 6l6 6-6 6"/></svg></a>
-      <button class="menu-btn" id="btnMenu" aria-label="Abrir menú" aria-expanded="false">☰</button>
+      <button class="menu-btn" id="btnMenu" aria-label="Abrir menú" aria-expanded="false"><span class="hamburguesa" aria-hidden="true"><i></i><i></i><i></i></span></button>
     </div>
   </div>
 </header>
@@ -459,7 +488,7 @@
     <div class="mundo">
       <canvas id="globo" aria-hidden="true"></canvas>
       <div class="sobre-globo">
-        <p>Una plataforma web que impulsa los <b>proyectos de software de estudiantes</b> para que salgan a la luz. Personas y empresas de cualquier país invierten en ellos, y el dinero se libera por etapas, a medida que el equipo cumple.</p>
+        <p>Una plataforma que impulsa <b>proyectos de software de estudiantes</b>. Invertís, y el dinero se libera por etapas a medida que el equipo cumple.</p>
         <div class="cta">
           <a class="boton" href="#proyectos">Quiero invertir <span class="flecha" aria-hidden="true">→</span></a>
           <a class="boton sec vidrio" href="#publicar"><span class="play" aria-hidden="true">▶</span> <span class="solo-pc">Quiero financiar mi proyecto</span><span class="solo-celu">Financiar mi proyecto</span></a>
