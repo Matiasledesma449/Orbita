@@ -87,19 +87,6 @@ export function iniciarGlobo(lienzo) {
   let fondo = null;   // halo + esfera: se dibujan una sola vez por tamaño de pantalla
   let chispa = null;  // brillo redondo ya dibujado, se reutiliza para la luz que viaja y las ciudades
   const NIVELES = 6;  // los puntos de tierra se agrupan por brillo para dibujarlos de a montones
-  // satélites: cada uno gira en su propia órbita inclinada alrededor del planeta
-  // (radio en veces el del planeta, inclinación, giro de la órbita en pantalla, segundos por vuelta, sentido)
-  const SATELITES = [
-    // inclinadas para que crucen por arriba del planeta, la parte que se ve en pantalla
-    { r: 1.10, incl: -50, rot: 58, vuelta: 26, sentido: 1, fases: [0.05, 0.55] },
-    { r: 1.16, incl: -42, rot: -56, vuelta: 34, sentido: -1, fases: [0.3, 0.8] },
-    { r: 1.21, incl: -30, rot: 12, vuelta: 44, sentido: 1, fases: [0.62] },
-  ];
-  function puntoDeOrbita(o, th) {
-    const a = o.incl * RAD, b = o.rot * RAD;
-    const x = o.r * Math.cos(th), y1 = -o.r * Math.sin(th) * Math.sin(a), z = o.r * Math.sin(th) * Math.cos(a);
-    return [x * Math.cos(b) - y1 * Math.sin(b), x * Math.sin(b) + y1 * Math.cos(b), z];
-  }
 
   function medir() {
     const r = lienzo.getBoundingClientRect();
@@ -124,19 +111,6 @@ export function iniciarGlobo(lienzo) {
     esfera.addColorStop(0, "#2a1a12"); esfera.addColorStop(0.6, "#151312"); esfera.addColorStop(1, "#0d0d0f");
     f.fillStyle = esfera; f.beginPath(); f.arc(cx, cy, R, 0, Math.PI * 2); f.fill();
     f.strokeStyle = "rgba(255,150,90,0.45)"; f.lineWidth = 1.2; f.stroke();
-    // órbitas de los satélites (fijas: se dibujan una sola vez)
-    f.setLineDash([2, 7]); f.strokeStyle = "rgba(255,190,140,0.28)"; f.lineWidth = 1;
-    for (const o of SATELITES) {
-      f.beginPath(); let dibujando = false;
-      for (let i = 0; i <= 200; i++) {
-        const [x, y, z] = puntoDeOrbita(o, (i / 200) * Math.PI * 2);
-        if (z < 0 && x * x + y * y < 1) { dibujando = false; continue; }
-        const px = cx + x * R, py = cy - y * R;
-        dibujando ? f.lineTo(px, py) : f.moveTo(px, py); dibujando = true;
-      }
-      f.stroke();
-    }
-    f.setLineDash([]);
 
     chispa = document.createElement("canvas");
     const c = 64; chispa.width = chispa.height = c;
@@ -209,38 +183,6 @@ export function iniciarGlobo(lienzo) {
     for (const [x, y, d] of luces) ctx.drawImage(chispa, x - d / 2, y - d / 2, d, d);
     ctx.globalCompositeOperation = "source-over";
 
-    // órbitas y satélites (lo que pasa por detrás del planeta queda oculto)
-    const oculto = (x, y, z) => z < 0 && x * x + y * y < 1;
-    for (const o of SATELITES) {
-
-      for (const fase of o.fases) {
-        const th = (fase + o.sentido * t / (o.vuelta * 1000)) * Math.PI * 2;
-        const [x, y, z] = puntoDeOrbita(o, th);
-        if (oculto(x, y, z)) continue;
-        const [x2, y2] = puntoDeOrbita(o, th + o.sentido * 0.01);
-        const px = cx + x * R, py = cy - y * R, ang = Math.atan2(-(y2 - y), x2 - x);
-        const esc = Math.max(0.85, R / 470) * (0.85 + 0.2 * z);
-        ctx.globalCompositeOperation = "lighter";
-        ctx.drawImage(chispa, px - 22 * esc, py - 22 * esc, 44 * esc, 44 * esc);
-        ctx.globalCompositeOperation = "source-over";
-        dibujarSatelite(px, py, ang, esc);
-      }
-    }
-  }
-
-  // satélite chico: cuerpo claro, dos paneles solares naranjas y una antena
-  function dibujarSatelite(x, y, ang, e) {
-    ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(e, e);
-    ctx.fillStyle = "#2a1d16"; ctx.strokeStyle = "rgba(255,170,110,0.95)"; ctx.lineWidth = 1;
-    for (const lado of [-1, 1]) {
-      ctx.fillRect(lado * 6 - (lado < 0 ? 12 : 0), -3.5, 12, 7);
-      ctx.strokeRect(lado * 6 - (lado < 0 ? 12 : 0), -3.5, 12, 7);
-      ctx.beginPath(); ctx.moveTo(lado * 12, -3.5); ctx.lineTo(lado * 12, 3.5); ctx.stroke();
-    }
-    ctx.fillStyle = "#f4ede6"; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-4.5, -4.5, 9, 9, 2) : ctx.rect(-4.5, -4.5, 9, 9); ctx.fill();
-    ctx.strokeStyle = "rgba(244,237,230,0.9)"; ctx.beginPath(); ctx.moveTo(0, -4.5); ctx.lineTo(0, -9); ctx.stroke();
-    ctx.fillStyle = "#ff6b1a"; ctx.beginPath(); ctx.arc(0, -9.5, 1.6, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
   }
 
   function bucle(t) {
