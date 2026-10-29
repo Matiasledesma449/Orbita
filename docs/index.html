@@ -73,6 +73,20 @@
   button.sec:hover, .boton.sec:hover { border-color: var(--naranja); color: var(--naranja-claro); }
   button.peligro { background: var(--rojo); box-shadow: 0 8px 24px rgba(255,90,78,.25); }
   button.conectado { background: linear-gradient(90deg, var(--verde-osc), var(--naranja)); }
+  /* animación de la billetera: brilla mientras conecta y festeja cuando se conecta */
+  button.conectando { pointer-events: none; background: linear-gradient(90deg, #ff6b1a 0%, #ffb27a 25%, #ff6b1a 50%, #ffb27a 75%, #ff6b1a 100%); background-size: 200% 100%; animation: brillarBoton 1.1s linear infinite; }
+  @keyframes brillarBoton { to { background-position: -200% 0; } }
+  button.recien { animation: saltoBoton .7s cubic-bezier(.2,1.7,.4,1); }
+  @keyframes saltoBoton { 0% { transform: scale(.88); } 45% { transform: scale(1.1); } 100% { transform: scale(1); } }
+  button .tilde { display: inline-block; }
+  button.recien .tilde { animation: tildeEntra .6s cubic-bezier(.2,1.8,.4,1) .1s both; }
+  @keyframes tildeEntra { from { transform: scale(0) rotate(-90deg); opacity: 0; } to { transform: none; opacity: 1; } }
+  .billetera .onda { position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 999px; border: 2px solid var(--verde); pointer-events: none; animation: ondaBoton .9s ease-out both; }
+  @keyframes ondaBoton { from { transform: scale(1); opacity: .9; } to { transform: scale(1.35, 1.9); opacity: 0; } }
+  .billetera .chispa-boton { position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px; z-index: 3; border-radius: 50%; background: var(--naranja-claro); box-shadow: 0 0 10px var(--naranja); pointer-events: none; animation: chispaVuela 1s cubic-bezier(.15,.7,.3,1) both; }
+  .billetera .chispa-boton.verde { background: #7ee2a8; box-shadow: 0 0 10px var(--verde); }
+  @keyframes chispaVuela { 0% { transform: translate(0, 0) scale(.6); opacity: 0; } 12% { opacity: 1; } 60% { opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(.35); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { button.conectando, button.recien, button.recien .tilde { animation: none; } .billetera .onda, .billetera .chispa-boton { display: none; } }
   /* menú de la billetera (rama main) */
   .billetera { position: relative; }
   button.conectado::after { content: ""; display: inline-block; width: 8px; height: 8px; margin-left: 6px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-3px) rotate(45deg); transition: transform .2s; }

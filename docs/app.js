@@ -1164,16 +1164,45 @@ function mostrarGuia() {
   }, 50);
 }
 
+// Animación al conectar: mientras Freighter responde el botón brilla; al conectarse "salta",
+// lanza ondas verdes y chispas, y aparece el tilde.
+function esperandoBilletera(si) {
+  const b = $("btnConectar");
+  b.classList.toggle("conectando", si);
+  if (si) b.textContent = "Conectando…";
+  else if (!cuenta) b.textContent = "Conectar billetera";
+}
+
+function festejarConexion() {
+  const b = $("btnConectar"), caja = b.parentElement;
+  b.classList.remove("recien"); void b.offsetWidth; b.classList.add("recien");
+  for (let i = 0; i < 2; i++) {
+    const onda = document.createElement("span");
+    onda.className = "onda"; onda.style.animationDelay = `${i * 0.18}s`;
+    caja.append(onda); setTimeout(() => onda.remove(), 1400);
+  }
+  for (let i = 0; i < 14; i++) {
+    const c = document.createElement("span"), ang = (i / 14) * Math.PI * 2 + Math.random() * 0.4, dist = 46 + Math.random() * 34;
+    c.className = "chispa-boton" + (i % 3 === 0 ? " verde" : "");
+    c.style.setProperty("--dx", `${Math.cos(ang) * dist * 1.6}px`); c.style.setProperty("--dy", `${Math.sin(ang) * dist}px`);
+    caja.append(c); setTimeout(() => c.remove(), 1100);
+  }
+  setTimeout(() => b.classList.remove("recien"), 900);
+}
+
 async function conectar() {
   if (!F) { mostrarGuia(); return aviso("Primero instalá Freighter: seguí los 3 pasos.", 7000); }
   let r;
+  esperandoBilletera(true);
   try { r = await F.requestAccess(); }
-  catch (e) { console.error(e); mostrarGuia(); return aviso(`No se pudo conectar con Freighter: ${e?.message || e}`, 7000); }
+  catch (e) { console.error(e); esperandoBilletera(false); mostrarGuia(); return aviso(`No se pudo conectar con Freighter: ${e?.message || e}`, 7000); }
+  esperandoBilletera(false);
   if (r?.error) { mostrarGuia(); return aviso(r.error.message || String(r.error), 7000); }
   const direccion = typeof r === "string" ? r : r?.address;
   if (!direccion) { mostrarGuia(); return aviso("Freighter no devolvió ninguna cuenta. Abrí la extensión, desbloqueala y volvé a intentar.", 7000); }
   cuenta = direccion;
-  $("btnConectar").textContent = `✓ ${corto(cuenta)}`;
+  $("btnConectar").innerHTML = `<span class="tilde" aria-hidden="true">✓</span> ${escapar(corto(cuenta))}`;
+  festejarConexion();
   $("btnConectar").title = `Billetera conectada: ${cuenta}`;
   $("btnConectar").classList.add("conectado");
   $("menuDir").textContent = cuenta;
