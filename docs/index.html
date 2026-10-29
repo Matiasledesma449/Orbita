@@ -122,10 +122,16 @@
     padding-top: .14em; margin: calc(-.08em + clamp(4px, 1vh, 12px)) 0 0;
     /* un solo degradado: naranja abajo a la derecha hasta blanco arriba a la izquierda */
     background: linear-gradient(to top left, #e2540a 0%, #ff6b1a 16%, #ff9a55 36%, #ffd3b0 56%, #ffffff 74%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  /* luz que gira alrededor del título: una capa detrás de las letras y otra delante */
+  .titulo-caja { position: relative; z-index: 1; display: grid; place-items: center; }
+  .anillo-titulo { position: absolute; left: -9%; top: -8%; width: 118%; height: 128%; pointer-events: none; }
+  .anillo-titulo.frente { z-index: 2; }
+  .intro .anillo-titulo { animation: aparece 1s ease 1.6s both; }
+  @media (prefers-reduced-motion: reduce) { .intro .anillo-titulo { animation: none; } }
   /* el planeta sube y tapa la parte de abajo del título */
   .mundo { position: relative; z-index: 2; flex: 1; width: 100%; display: flex; flex-direction: column; align-items: center; margin-top: calc(var(--t) * -.30); min-height: clamp(200px, 35vh, 480px); }
   #globo { position: absolute; left: 50%; transform: translateX(-50%); pointer-events: none;
-    --diam: max(min(1500px, 92vw), 560px); top: calc(var(--diam) * -.078); width: calc(var(--diam) * 1.116); height: calc(var(--diam) * 1.116); }
+    --diam: max(min(1500px, 92vw), 560px); top: calc(var(--diam) * -.12); width: calc(var(--diam) * 1.2); height: calc(var(--diam) * 1.2); }
   .sobre-globo { position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; text-align: center; gap: clamp(10px, 1.8vh, 18px);
     padding: calc(var(--t) * .30 + clamp(22px, 4.5vh, 56px)) 16px 0; }
   .sobre-globo::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 50%; width: min(900px, 120%); height: 160%; transform: translate(-50%, -42%);
@@ -431,7 +437,11 @@
   <!-- ===================== INICIO ===================== -->
   <section class="pagina" data-pagina="inicio">
     <span class="insignia"><i>✓</i>Por etapas · Verificable · Sobre Stellar</span>
-    <h1 class="titulo-gigante">Órbita</h1>
+    <div class="titulo-caja">
+      <canvas id="anilloAtras" class="anillo-titulo" aria-hidden="true"></canvas>
+      <h1 class="titulo-gigante">Órbita</h1>
+      <canvas id="anilloFrente" class="anillo-titulo frente" aria-hidden="true"></canvas>
+    </div>
     <div class="mundo">
       <canvas id="globo" aria-hidden="true"></canvas>
       <div class="sobre-globo">

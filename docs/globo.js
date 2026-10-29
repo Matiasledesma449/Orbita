@@ -87,6 +87,19 @@ export function iniciarGlobo(lienzo) {
   let fondo = null;   // halo + esfera: se dibujan una sola vez por tamaño de pantalla
   let chispa = null;  // brillo redondo ya dibujado, se reutiliza para la luz que viaja y las ciudades
   const NIVELES = 6;  // los puntos de tierra se agrupan por brillo para dibujarlos de a montones
+  // satélites: cada uno gira en su propia órbita inclinada alrededor del planeta
+  // (radio en veces el del planeta, inclinación, giro de la órbita en pantalla, segundos por vuelta, sentido)
+  const SATELITES = [
+    // inclinadas para que crucen por arriba del planeta, la parte que se ve en pantalla
+    { r: 1.10, incl: -50, rot: 58, vuelta: 26, sentido: 1, fases: [0.05, 0.55] },
+    { r: 1.16, incl: -42, rot: -56, vuelta: 34, sentido: -1, fases: [0.3, 0.8] },
+    { r: 1.21, incl: -30, rot: 12, vuelta: 44, sentido: 1, fases: [0.62] },
+  ];
+  function puntoDeOrbita(o, th) {
+    const a = o.incl * RAD, b = o.rot * RAD;
+    const x = o.r * Math.cos(th), y1 = -o.r * Math.sin(th) * Math.sin(a), z = o.r * Math.sin(th) * Math.cos(a);
+    return [x * Math.cos(b) - y1 * Math.sin(b), x * Math.sin(b) + y1 * Math.cos(b), z];
+  }
 
   function medir() {
     const r = lienzo.getBoundingClientRect();
@@ -99,7 +112,7 @@ export function iniciarGlobo(lienzo) {
   }
 
   function prepararFondo() {
-    const R = ancho * 0.43, cx = ancho / 2, cy = alto / 2;
+    const R = ancho * 0.40, cx = ancho / 2, cy = alto / 2;
     fondo = document.createElement("canvas");
     fondo.width = lienzo.width; fondo.height = lienzo.height;
     const f = fondo.getContext("2d");
@@ -111,6 +124,19 @@ export function iniciarGlobo(lienzo) {
     esfera.addColorStop(0, "#2a1a12"); esfera.addColorStop(0.6, "#151312"); esfera.addColorStop(1, "#0d0d0f");
     f.fillStyle = esfera; f.beginPath(); f.arc(cx, cy, R, 0, Math.PI * 2); f.fill();
     f.strokeStyle = "rgba(255,150,90,0.45)"; f.lineWidth = 1.2; f.stroke();
+    // órbitas de los satélites (fijas: se dibujan una sola vez)
+    f.setLineDash([2, 7]); f.strokeStyle = "rgba(255,190,140,0.28)"; f.lineWidth = 1;
+    for (const o of SATELITES) {
+      f.beginPath(); let dibujando = false;
+      for (let i = 0; i <= 200; i++) {
+        const [x, y, z] = puntoDeOrbita(o, (i / 200) * Math.PI * 2);
+        if (z < 0 && x * x + y * y < 1) { dibujando = false; continue; }
+        const px = cx + x * R, py = cy - y * R;
+        dibujando ? f.lineTo(px, py) : f.moveTo(px, py); dibujando = true;
+      }
+      f.stroke();
+    }
+    f.setLineDash([]);
 
     chispa = document.createElement("canvas");
     const c = 64; chispa.width = chispa.height = c;
@@ -123,7 +149,7 @@ export function iniciarGlobo(lienzo) {
 
   function dibujar(t) {
     if (!ancho || !fondo) return;
-    const R = ancho * 0.43, cx = ancho / 2, cy = alto / 2;
+    const R = ancho * 0.40, cx = ancho / 2, cy = alto / 2;
     const g = giro * RAD, cg = Math.cos(g), sg = Math.sin(g);
     const proyectar = (x, y, z) => {
       const x1 = x * cg - z * sg, z1 = x * sg + z * cg;
@@ -145,7 +171,7 @@ export function iniciarGlobo(lienzo) {
       const luz = Math.min(1, z * 1.3);
       const nivel = Math.min(NIVELES - 1, Math.floor(luz * NIVELES));
       const x = cx + x1 * R, y = cy - (p[1] * ci - z1 * si) * R, r = (tam / 2) * (0.7 + 0.3 * luz);
-      caminos[nivel].moveTo(x + r, y); caminos[nivel].arc(x, y, r, 0, Math.PI * 2);
+      caminos[nivel].rect(x - r, y - r, r * 2, r * 2); // a este tamaño un cuadradito se ve como un punto y es mucho más rápido
     }
     for (let n = 0; n < NIVELES; n++) {
       const luz = (n + 0.5) / NIVELES;
@@ -182,6 +208,39 @@ export function iniciarGlobo(lienzo) {
     ctx.globalCompositeOperation = "lighter";
     for (const [x, y, d] of luces) ctx.drawImage(chispa, x - d / 2, y - d / 2, d, d);
     ctx.globalCompositeOperation = "source-over";
+
+    // órbitas y satélites (lo que pasa por detrás del planeta queda oculto)
+    const oculto = (x, y, z) => z < 0 && x * x + y * y < 1;
+    for (const o of SATELITES) {
+
+      for (const fase of o.fases) {
+        const th = (fase + o.sentido * t / (o.vuelta * 1000)) * Math.PI * 2;
+        const [x, y, z] = puntoDeOrbita(o, th);
+        if (oculto(x, y, z)) continue;
+        const [x2, y2] = puntoDeOrbita(o, th + o.sentido * 0.01);
+        const px = cx + x * R, py = cy - y * R, ang = Math.atan2(-(y2 - y), x2 - x);
+        const esc = Math.max(0.85, R / 470) * (0.85 + 0.2 * z);
+        ctx.globalCompositeOperation = "lighter";
+        ctx.drawImage(chispa, px - 22 * esc, py - 22 * esc, 44 * esc, 44 * esc);
+        ctx.globalCompositeOperation = "source-over";
+        dibujarSatelite(px, py, ang, esc);
+      }
+    }
+  }
+
+  // satélite chico: cuerpo claro, dos paneles solares naranjas y una antena
+  function dibujarSatelite(x, y, ang, e) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(e, e);
+    ctx.fillStyle = "#2a1d16"; ctx.strokeStyle = "rgba(255,170,110,0.95)"; ctx.lineWidth = 1;
+    for (const lado of [-1, 1]) {
+      ctx.fillRect(lado * 6 - (lado < 0 ? 12 : 0), -3.5, 12, 7);
+      ctx.strokeRect(lado * 6 - (lado < 0 ? 12 : 0), -3.5, 12, 7);
+      ctx.beginPath(); ctx.moveTo(lado * 12, -3.5); ctx.lineTo(lado * 12, 3.5); ctx.stroke();
+    }
+    ctx.fillStyle = "#f4ede6"; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-4.5, -4.5, 9, 9, 2) : ctx.rect(-4.5, -4.5, 9, 9); ctx.fill();
+    ctx.strokeStyle = "rgba(244,237,230,0.9)"; ctx.beginPath(); ctx.moveTo(0, -4.5); ctx.lineTo(0, -9); ctx.stroke();
+    ctx.fillStyle = "#ff6b1a"; ctx.beginPath(); ctx.arc(0, -9.5, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
   }
 
   function bucle(t) {
@@ -200,3 +259,82 @@ export function iniciarGlobo(lienzo) {
 
 const lienzo = document.getElementById("globo");
 if (lienzo) iniciarGlobo(lienzo);
+
+// Luz que gira alrededor de la palabra ÓRBITA: un anillo inclinado con una estela.
+// Se dibuja en dos capas: la mitad de atrás pasa por detrás de las letras y la de adelante por delante.
+export function iniciarAnilloTitulo(atras, frente) {
+  const ca = atras.getContext("2d"), cf = frente.getContext("2d");
+  if (!ca || !cf) return;
+  const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let w = 0, h = 0, dpr = 1;
+  const INCL = -7 * RAD, VUELTA = 9000, ESTELA = 26;
+  // brillo de la luz ya dibujado una vez (se reutiliza en cada cuadro)
+  const brillo = document.createElement("canvas"); brillo.width = brillo.height = 64;
+  { const b = brillo.getContext("2d"), g = b.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, "rgba(255,245,235,0.95)"); g.addColorStop(0.2, "rgba(255,170,100,0.6)"); g.addColorStop(1, "rgba(255,107,26,0)");
+    b.fillStyle = g; b.fillRect(0, 0, 64, 64); }
+
+  let fijoA = null, fijoF = null, zona = null; // anillo ya dibujado y zona que ocupa la luz
+
+  function medir() {
+    const r = atras.getBoundingClientRect();
+    w = r.width; h = r.height; dpr = Math.min(devicePixelRatio || 1, 1.5);
+    for (const c of [atras, frente]) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); c.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0); }
+    // el anillo no se mueve: se dibuja una vez (tenue atrás, un poco más visible adelante)
+    [fijoA, fijoF] = [false, true].map((adelante) => {
+      const c = document.createElement("canvas"); c.width = atras.width; c.height = atras.height;
+      const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.beginPath(); let empezado = false;
+      for (let i = 0; i <= 240; i++) {
+        const [x, y, f] = punto((i / 240) * Math.PI * 2);
+        if (f !== adelante) { empezado = false; continue; }
+        empezado ? g.lineTo(x, y) : g.moveTo(x, y); empezado = true;
+      }
+      g.strokeStyle = adelante ? "rgba(255,170,110,0.45)" : "rgba(255,170,110,0.18)"; g.lineWidth = adelante ? 1.4 : 1; g.stroke();
+      return c;
+    });
+    for (const [c, fijo] of [[ca, fijoA], [cf, fijoF]]) { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, atras.width, atras.height); c.drawImage(fijo, 0, 0); c.setTransform(dpr, 0, 0, dpr, 0, 0); }
+    zona = null;
+  }
+  const punto = (th) => {
+    const ax = w * 0.47, ay = h * 0.2, x = Math.cos(th) * ax, y = Math.sin(th) * ay;
+    return [w / 2 + x * Math.cos(INCL) - y * Math.sin(INCL), h * 0.56 + x * Math.sin(INCL) + y * Math.cos(INCL), Math.sin(th) > 0];
+  };
+
+  function dibujar(t) {
+    if (!w || !fijoA) return;
+    const th = (t / VUELTA) * Math.PI * 2;
+    const pts = [];
+    for (let k = ESTELA; k >= 0; k--) pts.push([...punto(th - k * 0.022), 1 - k / ESTELA]);
+    // solo se repinta la zona donde estaba y donde está la luz
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [x, y] of pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    const ahora = [x0 - 30, y0 - 30, x1 + 30, y1 + 30];
+    const z = zona ? [Math.min(zona[0], ahora[0]), Math.min(zona[1], ahora[1]), Math.max(zona[2], ahora[2]), Math.max(zona[3], ahora[3])] : ahora;
+    zona = ahora;
+    const sx = Math.max(0, Math.floor(z[0] * dpr)), sy = Math.max(0, Math.floor(z[1] * dpr));
+    const sw = Math.min(atras.width, Math.ceil(z[2] * dpr)) - sx, sh = Math.min(atras.height, Math.ceil(z[3] * dpr)) - sy;
+    if (sw <= 0 || sh <= 0) return;
+    for (const [c, fijo] of [[ca, fijoA], [cf, fijoF]]) {
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.clearRect(sx, sy, sw, sh); c.drawImage(fijo, sx, sy, sw, sh, sx, sy, sw, sh);
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    // la luz con su estela
+    for (const [x, y, f, a] of pts) {
+      const c = f ? cf : ca, r = 1.2 + 3.2 * a;
+      c.fillStyle = `rgba(255,${150 + Math.round(90 * a)},${90 + Math.round(120 * a)},${(0.85 * a * a).toFixed(3)})`;
+      c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+    }
+    const [x, y, f] = punto(th);
+    (f ? cf : ca).drawImage(brillo, x - 26, y - 26, 52, 52);
+  }
+
+  function bucle(t) { requestAnimationFrame(bucle); if (!document.hidden && atras.offsetParent !== null) dibujar(t); }
+  medir();
+  addEventListener("resize", () => { medir(); dibujar(performance.now()); });
+  if (quieto) dibujar(VUELTA * 0.15); else requestAnimationFrame(bucle);
+}
+
+const anilloAtras = document.getElementById("anilloAtras"), anilloFrente = document.getElementById("anilloFrente");
+if (anilloAtras && anilloFrente) iniciarAnilloTitulo(anilloAtras, anilloFrente);
